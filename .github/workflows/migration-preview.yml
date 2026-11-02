@@ -87,6 +87,13 @@ jobs:
                   AND column_name = 'article_id') <> 'NO' THEN
               RAISE EXCEPTION 'publishing_records.article_id must remain NOT NULL';
             END IF;
+            IF NOT EXISTS (
+              SELECT 1 FROM information_schema.columns
+              WHERE table_schema = 'qjai_content' AND table_name = 'users'
+                AND column_name = 'is_admin' AND is_nullable = 'NO'
+            ) THEN
+              RAISE EXCEPTION 'users.is_admin must exist and be NOT NULL';
+            END IF;
 
             INSERT INTO qjai_content.articles
               (title, slug, summary, body_markdown, status, source)
@@ -122,6 +129,7 @@ jobs:
           sudo apt-get install -y postgresql-client-17
           export PATH=/usr/lib/postgresql/17/bin:$PATH
           pg_dump --version
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "INSERT INTO qjai_content.users (email) VALUES ('backup-restore-test@example.invalid')"
           export BACKUP_DIR=/tmp/qjai-cms-backups
           bash scripts/db-backup.sh
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "CREATE DATABASE qjai_restore_test"
@@ -137,6 +145,8 @@ jobs:
           echo "Restored table count: $restored_tables"
           test "$restored_tables" -ge 4
           psql "$RESTORE_DATABASE_URL" -v ON_ERROR_STOP=1 -c "SELECT count(*) FROM qjai_content.payload_migrations"
+          restored_users="$(psql "$RESTORE_DATABASE_URL" -v ON_ERROR_STOP=1 -Atqc "SELECT count(*) FROM qjai_content.users WHERE email = 'backup-restore-test@example.invalid'")"
+          test "$restored_users" -eq 1
 
       - name: Show migration status
         run: pnpm payload migrate:status
