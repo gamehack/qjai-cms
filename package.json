@@ -14,7 +14,8 @@
     "typecheck": "tsc --noEmit",
     "generate:importmap": "payload generate:importmap",
     "generate:types": "payload generate:types",
-    "payload": "payload"
+    "payload": "payload",
+    "test": "node --test tests/*.test.mjs"
   },
   "dependencies": {
     "@payloadcms/db-postgres": "3.92.1",
