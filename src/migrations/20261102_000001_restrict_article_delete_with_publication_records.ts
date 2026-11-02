@@ -26,7 +26,7 @@ export async function down({ db }: MigrateDownArgs): Promise<void> {
       ADD CONSTRAINT "publishing_records_article_id_articles_id_fk"
       FOREIGN KEY ("article_id")
       REFERENCES "qjai_content"."articles"("id")
-      ON DELETE SET NULL
+      ON DELETE NO ACTION
       ON UPDATE NO ACTION;
   `)
 }
