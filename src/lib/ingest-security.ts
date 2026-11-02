@@ -1,4 +1,4 @@
-import { timingSafeEqual } from 'node:crypto'
+import { createHash, timingSafeEqual } from 'node:crypto'
 
 export type LimitedBodyResult =
   | { ok: true; body: string }
@@ -65,12 +65,23 @@ export function isValidSource(value: unknown): value is string {
   return typeof value === 'string' && /^[a-z0-9][a-z0-9_-]{0,49}$/.test(value)
 }
 
-export function isValidHttpsUrl(value: unknown): value is string {
+export function isValidOriginalUrl(value: unknown): value is string {
   if (typeof value !== 'string' || value.length > 2000) return false
   try {
     const url = new URL(value)
-    return url.protocol === 'https:' && Boolean(url.hostname) && !url.username && !url.password
+    return url.protocol === 'https:' && Boolean(url.hostname) &&
+      !url.username && !url.password
   } catch {
     return false
   }
+}
+
+export function buildSourceKey(source: string, externalId: string): string {
+  return `${source}:${externalId.trim()}`
+}
+
+export function buildArticleSlug(sourceKey: string): string {
+  const digest = createHash('sha256').update(sourceKey).digest('hex').slice(0, 32)
+  const source = sourceKey.slice(0, sourceKey.indexOf(':'))
+  return `${source}-${digest}`
 }
