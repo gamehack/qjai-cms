@@ -120,6 +120,8 @@ jobs:
           echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(. /etc/os-release && echo "$VERSION_CODENAME")-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
           sudo apt-get update
           sudo apt-get install -y postgresql-client-17
+          export PATH=/usr/lib/postgresql/17/bin:$PATH
+          pg_dump --version
           export BACKUP_DIR=/tmp/qjai-cms-backups
           bash scripts/db-backup.sh
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "CREATE DATABASE qjai_restore_test"
