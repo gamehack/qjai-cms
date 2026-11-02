@@ -27,7 +27,7 @@ export const Users: CollectionConfig = {
   },
   hooks: {
     beforeChange: [
-      async ({ data, id, operation, req }) => {
+      async ({ data, originalDoc, operation, req }) => {
         if (operation === 'create') {
           const existing = await req.payload.count({
             collection: 'users',
@@ -45,7 +45,7 @@ export const Users: CollectionConfig = {
 
         // Do not let the only administrator accidentally lock themselves out.
         if (operation === 'update' && data.isAdmin === false &&
-            String(req.user?.id) === String(id)) {
+            String(req.user?.id) === String(originalDoc?.id)) {
           const admins = await req.payload.count({
             collection: 'users',
             where: { isAdmin: { equals: true } },
