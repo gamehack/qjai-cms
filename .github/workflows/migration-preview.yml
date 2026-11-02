@@ -21,7 +21,7 @@ permissions:
 jobs:
   migration:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     services:
       postgres:
         image: postgres:17-alpine
@@ -65,12 +65,88 @@ jobs:
           exposed=$(psql "$DATABASE_URL" -tAc "SELECT count(*) FROM pg_tables WHERE schemaname = 'public'")
           echo "Application tables in public schema: $exposed"
           test "$exposed" -eq 0
-      - name: Verify publication records cascade on article deletion
+
+      - name: Verify publication records protect article deletion
         run: |
-          article_id=$(psql "$DATABASE_URL" -q -v ON_ERROR_STOP=1 -tAc "INSERT INTO qjai_content.articles (title, slug, summary, body_markdown, status, source) VALUES ('cascade test', 'cascade-test', 'test summary', 'test body', 'draft', 'ci') RETURNING id")
-          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "INSERT INTO qjai_content.publishing_records (article_id, channel, state) VALUES ($article_id, 'website', 'pending')"
-          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "DELETE FROM qjai_content.articles WHERE id = $article_id"
-          remaining=$(psql "$DATABASE_URL" -tAc "SELECT count(*) FROM qjai_content.publishing_records WHERE article_id = $article_id")
-          test "$remaining" -eq 0
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          DO $qjai$
+          DECLARE
+            article_id integer;
+            record_id integer;
+            delete_blocked boolean := false;
+          BEGIN
+            SELECT CASE confdeltype WHEN 'r' THEN true ELSE false END
+              INTO delete_blocked
+              FROM pg_constraint
+              WHERE conname = 'publishing_records_article_id_articles_id_fk';
+            IF delete_blocked IS DISTINCT FROM true THEN
+              RAISE EXCEPTION 'publishing_records FK must use ON DELETE RESTRICT';
+            END IF;
+            IF (SELECT is_nullable FROM information_schema.columns
+                WHERE table_schema = 'qjai_content' AND table_name = 'publishing_records'
+                  AND column_name = 'article_id') <> 'NO' THEN
+              RAISE EXCEPTION 'publishing_records.article_id must remain NOT NULL';
+            END IF;
+            IF NOT EXISTS (
+              SELECT 1 FROM information_schema.columns
+              WHERE table_schema = 'qjai_content' AND table_name = 'users'
+                AND column_name = 'is_admin' AND is_nullable = 'NO'
+            ) THEN
+              RAISE EXCEPTION 'users.is_admin must exist and be NOT NULL';
+            END IF;
+
+            INSERT INTO qjai_content.articles
+              (title, slug, summary, body_markdown, status, source)
+              VALUES ('FK test', 'fk-test-' || txid_current(), 'summary', 'body', 'draft', 'test')
+              RETURNING id INTO article_id;
+
+            INSERT INTO qjai_content.publishing_records
+              (article_id, channel, state)
+              VALUES (article_id, 'website', 'pending')
+              RETURNING id INTO record_id;
+
+            BEGIN
+              DELETE FROM qjai_content.articles WHERE id = article_id;
+              RAISE EXCEPTION 'article delete unexpectedly succeeded with a publication record';
+            EXCEPTION WHEN foreign_key_violation THEN
+              NULL;
+            END;
+
+            DELETE FROM qjai_content.publishing_records WHERE id = record_id;
+            DELETE FROM qjai_content.articles WHERE id = article_id;
+          END $qjai$;
+          SQL
+
+      - name: Verify backup and restore round-trip
+        run: |
+          set -Eeuo pipefail
+          sudo apt-get update
+          sudo apt-get install -y ca-certificates curl
+          sudo install -d /usr/share/postgresql-common/pgdg
+          curl --fail --silent --show-error https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo tee /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc >/dev/null
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(. /etc/os-release && echo "$VERSION_CODENAME")-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
+          export PATH=/usr/lib/postgresql/17/bin:$PATH
+          pg_dump --version
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "INSERT INTO qjai_content.users (email) VALUES ('backup-restore-test@example.invalid')"
+          export BACKUP_DIR=/tmp/qjai-cms-backups
+          bash scripts/db-backup.sh
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "CREATE DATABASE qjai_restore_test"
+          cleanup() {
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS qjai_restore_test WITH (FORCE)" >/dev/null || true
+          }
+          trap cleanup EXIT
+          export RESTORE_DATABASE_URL="$(node -e 'const u = new URL(process.env.DATABASE_URL); u.pathname = "/qjai_restore_test"; process.stdout.write(u.toString())')"
+          export BACKUP_FILE="$(find "$BACKUP_DIR" -type f -name '*.dump' -print -quit)"
+          test -n "$BACKUP_FILE"
+          DATABASE_URL="$RESTORE_DATABASE_URL" CONFIRM_RESTORE=RESTORE_QJAI_CONTENT_TO_EMPTY_DATABASE bash scripts/db-restore.sh
+          restored_tables="$(psql "$RESTORE_DATABASE_URL" -v ON_ERROR_STOP=1 -Atqc "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'qjai_content' AND table_type = 'BASE TABLE'")"
+          echo "Restored table count: $restored_tables"
+          test "$restored_tables" -ge 4
+          psql "$RESTORE_DATABASE_URL" -v ON_ERROR_STOP=1 -c "SELECT count(*) FROM qjai_content.payload_migrations"
+          restored_users="$(psql "$RESTORE_DATABASE_URL" -v ON_ERROR_STOP=1 -Atqc "SELECT count(*) FROM qjai_content.users WHERE email = 'backup-restore-test@example.invalid'")"
+          test "$restored_users" -eq 1
+
       - name: Show migration status
         run: pnpm payload migrate:status
