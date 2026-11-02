@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 import config from '@payload-config'
-import { isAuthorized, isValidSource, readLimitedBody } from '@/lib/ingest-security'
+import { isAuthorized, isValidHttpsUrl, isValidSource, readLimitedBody } from '@/lib/ingest-security'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -20,6 +20,11 @@ export async function POST(req: NextRequest) {
   }
   if (!isAuthorized(req.headers.get('authorization'), secret)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  }
+
+  const contentType = req.headers.get('content-type')?.split(';', 1)[0].trim().toLowerCase()
+  if (contentType !== 'application/json') {
+    return NextResponse.json({ error: 'unsupported_media_type' }, { status: 415 })
   }
 
   const contentLength = req.headers.get('content-length')
@@ -55,8 +60,10 @@ export async function POST(req: NextRequest) {
   const sourceKey = `${typedSource}:${data.externalId}`
   const digest = createHash('sha256').update(sourceKey).digest('hex').slice(0, 16)
   const slug = `${typedSource}-${digest}`
-  const originalUrl = typeof data.originalUrl === 'string' && /^https:\/\//.test(data.originalUrl)
-    ? data.originalUrl.slice(0, 2000) : undefined
+  if (data.originalUrl !== undefined && data.originalUrl !== null && data.originalUrl !== '' && !isValidHttpsUrl(data.originalUrl)) {
+    return NextResponse.json({ error: 'invalid_original_url' }, { status: 422 })
+  }
+  const originalUrl = isValidHttpsUrl(data.originalUrl) ? data.originalUrl : undefined
 
   try {
     const payload = await getPayload({ config })
