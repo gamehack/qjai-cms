@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { isAuthorized, isValidSource, readLimitedBody } from '../src/lib/ingest-security.ts'
+import { buildArticleSlug, buildSourceKey, isAuthorized, isValidOriginalUrl, isValidSource, readLimitedBody } from '../src/lib/ingest-security.ts'
 
 function streamFrom(chunks) {
   return new ReadableStream({
