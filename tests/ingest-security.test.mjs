@@ -68,3 +68,13 @@ test('accepts generic lowercase source identifiers', () => {
   assert.equal(isValidSource(''), false)
   assert.equal(isValidSource('a'.repeat(51)), false)
 })
+
+test('accepts only absolute HTTPS source URLs without credentials', async () => {
+  const { isValidHttpsUrl } = await import('../src/lib/ingest-security.ts')
+  assert.equal(isValidHttpsUrl('https://example.com/article'), true)
+  assert.equal(isValidHttpsUrl('http://example.com/article'), false)
+  assert.equal(isValidHttpsUrl('https://user:pass@example.com/'), false)
+  assert.equal(isValidHttpsUrl('https://'), false)
+  assert.equal(isValidHttpsUrl('javascript:alert(1)'), false)
+  assert.equal(isValidHttpsUrl('https://example.com/' + 'a'.repeat(2100)), false)
+})
