@@ -21,7 +21,7 @@ services:
       start_period: 90s
 
   qjai-cms-migrate:
-    image: ghcr.io/gamehack/qjai-cms:migrate-${IMAGE_SHA:?Set IMAGE_SHA to the full tested commit SHA}
+    image: ghcr.io/gamehack/qjai-cms:migrate-${IMAGE_SHA:-dev}
     container_name: qjai-cms-migrate
     profiles: ["migrate"]
     env_file:
