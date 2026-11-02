@@ -13,24 +13,49 @@ function validText(value: unknown, max: number): value is string {
   return typeof value === 'string' && value.trim().length > 0 && value.length <= max
 }
 
+function validOriginalUrl(value: unknown): value is string {
+  if (typeof value !== 'string' || value.length > 2000) return false
+  try {
+    const url = new URL(value)
+    return url.protocol === 'https:' && !url.username && !url.password
+  } catch {
+    return false
+  }
+}
+
+function json(data: Record<string, unknown>, status: number) {
+  return NextResponse.json(data, {
+    status,
+    headers: { 'Cache-Control': 'no-store' },
+  })
+}
+
 export async function POST(req: NextRequest) {
   const secret = process.env.CONTENT_INGEST_TOKEN
   if (!secret || secret.length < 32) {
-    return NextResponse.json({ error: 'ingest_disabled' }, { status: 503 })
+    return json({ error: 'ingest_disabled' }, 503)
   }
   if (!isAuthorized(req.headers.get('authorization'), secret)) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+    return json({ error: 'unauthorized' }, 401)
+  }
+
+  const contentType = req.headers.get('content-type')?.split(';', 1)[0].trim().toLowerCase()
+  if (contentType !== 'application/json') {
+    return json({ error: 'unsupported_media_type' }, 415)
   }
 
   const contentLength = req.headers.get('content-length')
-  if (contentLength && /^\d+$/.test(contentLength) && Number(contentLength) > MAX_BODY_BYTES) {
-    return NextResponse.json({ error: 'too_large' }, { status: 413 })
+  if (contentLength && !/^\d+$/.test(contentLength)) {
+    return json({ error: 'invalid_content_length' }, 400)
+  }
+  if (contentLength && Number(contentLength) > MAX_BODY_BYTES) {
+    return json({ error: 'too_large' }, 413)
   }
 
   const bodyResult = await readLimitedBody(req.body, MAX_BODY_BYTES)
   if (!bodyResult.ok) {
     const status = bodyResult.reason === 'too_large' ? 413 : 400
-    return NextResponse.json({ error: bodyResult.reason }, { status })
+    return json({ error: bodyResult.reason }, status)
   }
 
   let data: Record<string, unknown>
@@ -39,24 +64,31 @@ export async function POST(req: NextRequest) {
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw Error('not object')
     data = parsed as Record<string, unknown>
   } catch {
-    return NextResponse.json({ error: 'invalid_json' }, { status: 400 })
+    return json({ error: 'invalid_json' }, 400)
   }
 
   const source = data.source
   if (!isValidSource(source)) {
-    return NextResponse.json({ error: 'invalid_source' }, { status: 422 })
+    return json({ error: 'invalid_source' }, 422)
   }
   if (!validText(data.externalId, 200) || !validText(data.title, 200) ||
       !validText(data.summary, 2000) || !validText(data.bodyMarkdown, 180_000)) {
-    return NextResponse.json({ error: 'invalid_content' }, { status: 422 })
+    return json({ error: 'invalid_content' }, 422)
+  }
+  if (data.originalUrl !== undefined && data.originalUrl !== null && data.originalUrl !== '' &&
+      !validOriginalUrl(data.originalUrl)) {
+    return json({ error: 'invalid_original_url' }, 422)
   }
 
   const typedSource = source
-  const sourceKey = `${typedSource}:${data.externalId}`
-  const digest = createHash('sha256').update(sourceKey).digest('hex').slice(0, 16)
+  const externalId = (data.externalId as string).trim()
+  const sourceKey = `${typedSource}:${externalId}`
+  // 128-bit slug suffix gives ample collision resistance while keeping slugs compact.
+  const digest = createHash('sha256').update(sourceKey).digest('hex').slice(0, 32)
   const slug = `${typedSource}-${digest}`
-  const originalUrl = typeof data.originalUrl === 'string' && /^https:\/\//.test(data.originalUrl)
-    ? data.originalUrl.slice(0, 2000) : undefined
+  const originalUrl = typeof data.originalUrl === 'string' && data.originalUrl.length
+    ? data.originalUrl
+    : undefined
 
   try {
     const payload = await getPayload({ config })
@@ -67,7 +99,7 @@ export async function POST(req: NextRequest) {
       overrideAccess: true,
     })
     if (found.docs.length) {
-      return NextResponse.json({ id: found.docs[0].id, slug, duplicate: true }, { status: 200 })
+      return json({ id: found.docs[0].id, slug: found.docs[0].slug, duplicate: true }, 200)
     }
 
     try {
@@ -75,9 +107,9 @@ export async function POST(req: NextRequest) {
         collection: 'articles',
         overrideAccess: true,
         data: {
-          title: data.title.trim(),
+          title: (data.title as string).trim(),
           slug,
-          summary: data.summary.trim(),
+          summary: (data.summary as string).trim(),
           bodyMarkdown: data.bodyMarkdown,
           source: typedSource,
           sourceKey,
@@ -86,7 +118,7 @@ export async function POST(req: NextRequest) {
           status: 'draft',
         },
       })
-      return NextResponse.json({ id: created.id, slug, status: 'draft', duplicate: false }, { status: 201 })
+      return json({ id: created.id, slug, status: 'draft', duplicate: false }, 201)
     } catch (createError) {
       // A concurrent duplicate may hit the unique constraint; do not overwrite editorial changes.
       const raced = await payload.find({
@@ -96,12 +128,12 @@ export async function POST(req: NextRequest) {
         overrideAccess: true,
       })
       if (raced.docs.length) {
-        return NextResponse.json({ id: raced.docs[0].id, slug, duplicate: true }, { status: 200 })
+        return json({ id: raced.docs[0].id, slug: raced.docs[0].slug, duplicate: true }, 200)
       }
       throw createError
     }
   } catch (error) {
     console.error('ingest failed', error instanceof Error ? error.name : 'unknown')
-    return NextResponse.json({ error: 'storage_failure' }, { status: 500 })
+    return json({ error: 'storage_failure' }, 500)
   }
 }
