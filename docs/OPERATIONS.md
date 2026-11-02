@@ -14,7 +14,7 @@ Do not put connection strings in shell history or commit them. Export `DATABASE_
 
 ```sh
 export DATABASE_URL='postgresql://...'
-BACKUP_DIR=./backups ./scripts/db-backup.sh
+BACKUP_DIR=./backups bash scripts/db-backup.sh
 ```
 
 The script refuses to produce an empty backup, writes a PostgreSQL custom-format archive with restrictive file permissions, and verifies that the archive can be listed by `pg_restore`. Keep backups outside the application container and encrypt them at rest before uploading to remote storage.
@@ -26,7 +26,7 @@ Restore is intentionally non-destructive: it refuses to run unless the target da
 ```sh
 export DATABASE_URL='postgresql://...'
 export BACKUP_FILE='./backups/qjai_content-YYYYMMDDTHHMMSSZ.dump'
-CONFIRM_RESTORE=RESTORE_QJAI_CONTENT_TO_EMPTY_DATABASE ./scripts/db-restore.sh
+CONFIRM_RESTORE=RESTORE_QJAI_CONTENT_TO_EMPTY_DATABASE bash scripts/db-restore.sh
 ```
 
 Never point this command at the production database as a shortcut for testing. Verify restored table counts and application behavior before switching traffic.
@@ -37,7 +37,7 @@ After migrations and the app are running:
 
 ```sh
 export CONTENT_INGEST_TOKEN='the-server-side-token'
-BASE_URL='https://your-cms.example' ./scripts/smoke-test.sh
+BASE_URL='https://your-cms.example' bash scripts/smoke-test.sh
 ```
 
 This checks database readiness, the homepage, unauthenticated ingestion rejection, and content-type validation. It does not create content.
