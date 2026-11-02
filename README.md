@@ -66,11 +66,11 @@ Use TLS for remote PostgreSQL connections. Do not grant schema-creation privileg
 
 ## Content ingestion
 
-`POST /api/ingest` accepts authenticated JSON submissions and creates drafts only. It enforces a request-body limit and uses `source + externalId` for idempotency. Replayed submissions do not overwrite editorial changes. The endpoint cannot publish articles.
+`POST /api/ingest` accepts authenticated `application/json` submissions and creates drafts only. It enforces a request-body limit, validates optional source URLs as credential-free HTTPS URLs, and uses `source + externalId` for idempotency. Replayed submissions do not overwrite editorial changes. Unsupported content types receive HTTP 415; invalid fields receive HTTP 422. The endpoint cannot publish articles. `/api/health` checks database readiness and returns HTTP 503 if PostgreSQL is unavailable.
 
 ## Database backup and recovery
 
-See [Database operations](docs/OPERATIONS.md) for schema-scoped backup, guarded restore and read-only deployment smoke checks.
+Use the included `scripts/db-backup.sh`, `scripts/db-restore.sh`, and `scripts/smoke-test.sh` utilities for schema-scoped backup, guarded restore, and read-only deployment checks. Review the script comments and your database provider's backup documentation before production use.
 
 ## Docker
 
