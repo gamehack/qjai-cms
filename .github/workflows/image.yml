@@ -30,7 +30,7 @@ jobs:
             type=sha,format=long
             type=ref,event=tag
       - name: Build and publish lean application image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           target: runtime
@@ -40,7 +40,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Build and publish one-shot Payload migration image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           target: migrate
