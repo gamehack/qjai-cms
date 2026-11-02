@@ -19,9 +19,7 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
         <header className="site-header">
           <div className="container header-inner">
             <Link className="brand" href="/"><span className="brand-symbol">Q</span> {siteName}</Link>
-            <nav aria-label="主导航">
-              <Link href="/">首页</Link>
-            </nav>
+            <nav aria-label="主导航"><Link href="/">首页</Link></nav>
           </div>
         </header>
         <main>{children}</main>
