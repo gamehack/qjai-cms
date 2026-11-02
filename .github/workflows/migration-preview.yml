@@ -65,5 +65,45 @@ jobs:
           exposed=$(psql "$DATABASE_URL" -tAc "SELECT count(*) FROM pg_tables WHERE schemaname = 'public'")
           echo "Application tables in public schema: $exposed"
           test "$exposed" -eq 0
+
+      - name: Verify publication records protect article deletion
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          DO $
+          DECLARE
+            article_id integer;
+            record_id integer;
+            delete_blocked boolean := false;
+          BEGIN
+            SELECT CASE confdeltype WHEN 'r' THEN true ELSE false END
+              INTO delete_blocked
+              FROM pg_constraint
+              WHERE conname = 'publishing_records_article_id_articles_id_fk';
+            IF delete_blocked IS DISTINCT FROM true THEN
+              RAISE EXCEPTION 'publishing_records FK must use ON DELETE RESTRICT';
+            END IF;
+
+            INSERT INTO qjai_content.articles
+              (title, slug, summary, body_markdown, status, source)
+              VALUES ('FK test', 'fk-test-' || txid_current(), 'summary', 'body', 'draft', 'test')
+              RETURNING id INTO article_id;
+
+            INSERT INTO qjai_content.publishing_records
+              (article_id, channel, state)
+              VALUES (article_id, 'website', 'pending')
+              RETURNING id INTO record_id;
+
+            BEGIN
+              DELETE FROM qjai_content.articles WHERE id = article_id;
+              RAISE EXCEPTION 'article delete unexpectedly succeeded with a publication record';
+            EXCEPTION WHEN foreign_key_violation THEN
+              NULL;
+            END;
+
+            DELETE FROM qjai_content.publishing_records WHERE id = record_id;
+            DELETE FROM qjai_content.articles WHERE id = article_id;
+          END $;
+          SQL
+
       - name: Show migration status
         run: pnpm payload migrate:status
