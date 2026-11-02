@@ -80,7 +80,10 @@ const selfPromotion = await request(`/users/${editorCreate.data.doc.id}`, {
   token: editorToken,
   body: { isAdmin: true },
 })
-assert.ok([401, 403].includes(selfPromotion.status), 'editor could update their own administrator flag')
+assert.ok([200, 401, 403].includes(selfPromotion.status), 'unexpected response to editor self-promotion attempt')
+if (selfPromotion.status === 200) {
+  assert.equal(selfPromotion.data.doc?.isAdmin, false, 'editor promoted their own account')
+}
 
 console.log('4/7 Verify editor cannot publish and admin publication timestamps are populated')
 const editorPublish = await request('/articles', {
