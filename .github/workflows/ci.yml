@@ -25,6 +25,10 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Validate operational shell scripts
         run: bash -n scripts/db-backup.sh scripts/db-restore.sh scripts/smoke-test.sh
+      - name: Validate Docker Compose configuration
+        run: |
+          touch .env .migration.env
+          IMAGE_TAG=sha-ci IMAGE_SHA=ci docker compose config --quiet
       - name: Run unit and policy tests
         run: pnpm test
       - name: Check integration test syntax
