@@ -23,6 +23,8 @@ jobs:
           cache: pnpm
       - name: Install locked dependencies
         run: pnpm install --frozen-lockfile
+      - name: Validate operational shell scripts
+        run: bash -n scripts/db-backup.sh scripts/db-restore.sh scripts/smoke-test.sh
       - name: Run ingestion security tests
         run: node --test tests/ingest-security.test.mjs
       - name: Audit production dependencies
