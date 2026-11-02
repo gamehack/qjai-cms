@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload'
+import { isAdminUser, isEditorUser } from '../lib/access'
 
 export const Articles: CollectionConfig = {
   slug: 'articles',
@@ -8,9 +9,23 @@ export const Articles: CollectionConfig = {
   },
   access: {
     read: ({ req }) => req.user ? true : { status: { equals: 'published' } },
-    create: ({ req }) => Boolean(req.user),
-    update: ({ req }) => Boolean(req.user),
-    delete: ({ req }) => Boolean(req.user),
+    create: ({ req }) => isEditorUser(req.user) || isAdminUser(req.user),
+    update: ({ req }) => isAdminUser(req.user)
+      ? true
+      : isEditorUser(req.user)
+        ? { status: { not_equals: 'published' } }
+        : false,
+    delete: ({ req }) => isAdminUser(req.user),
+  },
+  hooks: {
+    beforeChange: [
+      ({ data, req }) => {
+        if (!isAdminUser(req.user) && data.status === 'published') {
+          return { ...data, status: 'review', publishedAt: null }
+        }
+        return data
+      },
+    ],
   },
   fields: [
     { name: 'title', type: 'text', required: true },
