@@ -14,11 +14,20 @@ export const Users: CollectionConfig = {
     read: ({ req }) => isAdminUser(req.user),
     create: ({ req }) => isAdminUser(req.user),
     update: ({ req }) => isAdminUser(req.user),
-    delete: ({ req }) => isAdminUser(req.user),
+    delete: async ({ req, id }) => {
+      if (!isAdminUser(req.user)) return false
+      if (String(req.user?.id) !== String(id)) return true
+      const admins = await req.payload.count({
+        collection: 'users',
+        where: { isAdmin: { equals: true } },
+        overrideAccess: true,
+      })
+      return admins.totalDocs > 1
+    },
   },
   hooks: {
     beforeChange: [
-      async ({ data, operation, req }) => {
+      async ({ data, id, operation, req }) => {
         if (operation === 'create') {
           const existing = await req.payload.count({
             collection: 'users',
@@ -33,6 +42,17 @@ export const Users: CollectionConfig = {
 
         // A non-admin can never promote an account through a crafted payload.
         if (!isAdminUser(req.user)) return { ...data, isAdmin: false }
+
+        // Do not let the only administrator accidentally lock themselves out.
+        if (operation === 'update' && data.isAdmin === false &&
+            String(req.user?.id) === String(id)) {
+          const admins = await req.payload.count({
+            collection: 'users',
+            where: { isAdmin: { equals: true } },
+            overrideAccess: true,
+          })
+          if (admins.totalDocs <= 1) return { ...data, isAdmin: true }
+        }
         return data
       },
     ],
