@@ -187,5 +187,61 @@ jobs:
           restored_users="$(psql "$RESTORE_DATABASE_URL" -v ON_ERROR_STOP=1 -Atqc "SELECT count(*) FROM qjai_content.users WHERE email = 'backup-restore-test@example.invalid'")"
           test "$restored_users" -eq 1
 
+      - name: Verify empty-schema baseline backup and restore
+        run: |
+          set -Eeuo pipefail
+          export PATH=/usr/lib/postgresql/17/bin:$PATH
+          pg_dump --version
+          pg_restore --version
+          EMPTY_SOURCE_DB=qjai_empty_backup_source
+          EMPTY_TARGET_DB=qjai_empty_restore_target
+
+          cleanup() {
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS $EMPTY_TARGET_DB WITH (FORCE)" >/dev/null 2>&1 || true
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS $EMPTY_SOURCE_DB WITH (FORCE)" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "CREATE DATABASE $EMPTY_SOURCE_DB"
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "CREATE DATABASE $EMPTY_TARGET_DB"
+
+          make_database_url() {
+            DB_NAME="$1" node -e 'const u = new URL(process.env.DATABASE_URL); u.pathname = "/" + process.env.DB_NAME; process.stdout.write(u.toString())'
+          }
+          EMPTY_SOURCE_URL="$(make_database_url "$EMPTY_SOURCE_DB")"
+          EMPTY_TARGET_URL="$(make_database_url "$EMPTY_TARGET_DB")"
+
+          psql "$EMPTY_SOURCE_URL" -v ON_ERROR_STOP=1 -c "CREATE SCHEMA qjai_content"
+
+          if DATABASE_URL="$EMPTY_SOURCE_URL" BACKUP_DIR=/tmp/qjai-cms-empty-default bash scripts/db-backup.sh >/tmp/qjai-cms-empty-default.log 2>&1; then
+            cat /tmp/qjai-cms-empty-default.log
+            echo "ERROR: default backup unexpectedly accepted an empty schema." >&2
+            exit 1
+          fi
+          if find /tmp/qjai-cms-empty-default -type f -name '*.dump' -print -quit | grep -q .; then
+            echo "ERROR: default empty-schema guard left a dump file behind." >&2
+            exit 1
+          fi
+
+          EMPTY_BACKUP_DIR=/tmp/qjai-cms-empty-baseline
+          ALLOW_EMPTY_SCHEMA=1 DATABASE_URL="$EMPTY_SOURCE_URL" BACKUP_DIR="$EMPTY_BACKUP_DIR" bash scripts/db-backup.sh
+          EMPTY_BACKUP_FILE="$(find "$EMPTY_BACKUP_DIR" -type f -name '*.dump' -print -quit)"
+          test -n "$EMPTY_BACKUP_FILE"
+          pg_restore --list "$EMPTY_BACKUP_FILE" | grep -F "SCHEMA - qjai_content"
+
+          if DATABASE_URL="$EMPTY_TARGET_URL" BACKUP_FILE="$EMPTY_BACKUP_FILE" CONFIRM_RESTORE=RESTORE_QJAI_CONTENT_TO_EMPTY_DATABASE bash scripts/db-restore.sh >/tmp/qjai-cms-empty-restore-default.log 2>&1; then
+            cat /tmp/qjai-cms-empty-restore-default.log
+            echo "ERROR: default restore unexpectedly accepted an empty-schema archive." >&2
+            exit 1
+          fi
+          target_schema_before="$(psql "$EMPTY_TARGET_URL" -X -v ON_ERROR_STOP=1 -Atqc "SELECT EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'qjai_content')")"
+          test "$target_schema_before" = "f"
+
+          ALLOW_EMPTY_SCHEMA=1 DATABASE_URL="$EMPTY_TARGET_URL" BACKUP_FILE="$EMPTY_BACKUP_FILE" CONFIRM_RESTORE=RESTORE_QJAI_CONTENT_TO_EMPTY_DATABASE bash scripts/db-restore.sh
+          target_schema_after="$(psql "$EMPTY_TARGET_URL" -X -v ON_ERROR_STOP=1 -Atqc "SELECT EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'qjai_content')")"
+          target_table_count="$(psql "$EMPTY_TARGET_URL" -X -v ON_ERROR_STOP=1 -Atqc "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'qjai_content' AND table_type = 'BASE TABLE'")"
+          test "$target_schema_after" = "t"
+          test "$target_table_count" -eq 0
+
       - name: Show migration status
         run: pnpm payload migrate:status

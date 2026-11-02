@@ -4,6 +4,12 @@ set -Eeuo pipefail
 : "${DATABASE_URL:?Set DATABASE_URL to the EMPTY target database connection string}"
 : "${BACKUP_FILE:?Set BACKUP_FILE to a verified qjai_content custom-format dump}"
 
+ALLOW_EMPTY_SCHEMA="${ALLOW_EMPTY_SCHEMA:-0}"
+if [[ "$ALLOW_EMPTY_SCHEMA" != "0" && "$ALLOW_EMPTY_SCHEMA" != "1" ]]; then
+  echo "ERROR: ALLOW_EMPTY_SCHEMA must be 0 or 1." >&2
+  exit 1
+fi
+
 if [[ "${CONFIRM_RESTORE:-}" != "RESTORE_QJAI_CONTENT_TO_EMPTY_DATABASE" ]]; then
   echo "ERROR: set CONFIRM_RESTORE=RESTORE_QJAI_CONTENT_TO_EMPTY_DATABASE to proceed." >&2
   exit 1
@@ -13,7 +19,17 @@ if [[ ! -f "$BACKUP_FILE" || -L "$BACKUP_FILE" ]]; then
   exit 1
 fi
 
-pg_restore --list "$BACKUP_FILE" >/dev/null
+archive_list="$(pg_restore --list "$BACKUP_FILE")"
+if ! grep -Fq 'SCHEMA - qjai_content' <<<"$archive_list"; then
+  echo "ERROR: backup archive does not contain the qjai_content schema entry." >&2
+  exit 1
+fi
+
+archive_table_count="$(grep -Ec ' TABLE qjai_content ' <<<"$archive_list" || true)"
+if [[ "$archive_table_count" -lt 1 && "$ALLOW_EMPTY_SCHEMA" != "1" ]]; then
+  echo "ERROR: backup archive contains no qjai_content tables; set ALLOW_EMPTY_SCHEMA=1 only for an intentional empty-schema baseline." >&2
+  exit 1
+fi
 
 schema_exists="$(psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 -Atqc \
   "SELECT EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'qjai_content')")"
@@ -25,11 +41,22 @@ fi
 echo "Restoring qjai_content into the explicitly selected empty target database."
 pg_restore --no-owner --no-acl --exit-on-error --dbname="$DATABASE_URL" "$BACKUP_FILE"
 
+schema_exists_after="$(psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 -Atqc \
+  "SELECT EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'qjai_content')")"
+if [[ "$schema_exists_after" != "t" ]]; then
+  echo "ERROR: restore finished but qjai_content schema was not found." >&2
+  exit 1
+fi
+
 table_count="$(psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1 -Atqc \
   "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'qjai_content' AND table_type = 'BASE TABLE'")"
-if [[ "$table_count" -lt 1 ]]; then
+if [[ "$table_count" -lt 1 && "$ALLOW_EMPTY_SCHEMA" != "1" ]]; then
   echo "ERROR: restore finished but no tables were found in qjai_content." >&2
   exit 1
 fi
 
-echo "Restore completed. Tables present: $table_count"
+if [[ "$table_count" -lt 1 ]]; then
+  echo "Empty-schema baseline restore completed. Tables present: 0"
+else
+  echo "Restore completed. Tables present: $table_count"
+fi
