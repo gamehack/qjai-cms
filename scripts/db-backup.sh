@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-: "\${DATABASE_URL:?Set DATABASE_URL to the CMS database connection string}"
+: "${DATABASE_URL:?Set DATABASE_URL to the CMS database connection string}"
 
-ALLOW_EMPTY_SCHEMA="\${ALLOW_EMPTY_SCHEMA:-0}"
+ALLOW_EMPTY_SCHEMA="${ALLOW_EMPTY_SCHEMA:-0}"
 if [[ "$ALLOW_EMPTY_SCHEMA" != "0" && "$ALLOW_EMPTY_SCHEMA" != "1" ]]; then
   echo "ERROR: ALLOW_EMPTY_SCHEMA must be 0 or 1." >&2
   exit 1
 fi
 
-BACKUP_DIR="\${BACKUP_DIR:-./backups}"
+BACKUP_DIR="${BACKUP_DIR:-./backups}"
 mkdir -p "$BACKUP_DIR"
 chmod 700 "$BACKUP_DIR"
 umask 077
