@@ -59,3 +59,31 @@ test('editors can manage categories but cannot access publication audit records'
   assert.equal(permissions(PublishingRecords, 'read', editor), false)
   assert.equal(permissions(PublishingRecords, 'create', editor), false)
 })
+
+test('the only administrator cannot demote or delete themselves', async () => {
+  const admin = { id: 1, isAdmin: true }
+  const hook = Users.hooks.beforeChange[0]
+  const updated = await hook({
+    id: 1,
+    data: { isAdmin: false },
+    operation: 'update',
+    req: {
+      user: admin,
+      payload: {
+        count: async () => ({ totalDocs: 1 }),
+      },
+    },
+  })
+  assert.equal(updated.isAdmin, true)
+
+  const canDelete = await Users.access.delete({
+    id: 1,
+    req: {
+      user: admin,
+      payload: {
+        count: async () => ({ totalDocs: 1 }),
+      },
+    },
+  })
+  assert.equal(canDelete, false)
+})
