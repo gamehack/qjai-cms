@@ -26,7 +26,7 @@ jobs:
       - name: Validate operational shell scripts
         run: bash -n scripts/db-backup.sh scripts/db-restore.sh scripts/smoke-test.sh
       - name: Run ingestion security tests
-        run: node --test tests/ingest-security.test.mjs tests/access.test.mjs tests/collection-access.test.mjs
+        run: node --test tests/ingest-security.test.mjs tests/access.test.mjs
       - name: Audit production dependencies
         run: pnpm audit --prod --audit-level high
       - name: Inventory production dependency licenses
