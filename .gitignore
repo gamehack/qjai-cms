@@ -1,0 +1,15 @@
+node_modules
+.next
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+.migration.env
+.migration.env.*
+!.migration.env.example
+.DS_Store
+coverage
+dist
+build
+*.log
+src/payload-types.ts

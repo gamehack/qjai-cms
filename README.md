@@ -38,7 +38,7 @@ This repository contains the CMS core only. It does not include upstream collect
    cp .migration.env.example .migration.env
    ```
 
-   Set `DATABASE_URL`, `PAYLOAD_SECRET`, `SITE_URL` and `CONTENT_INGEST_TOKEN` in `.env`. Set the migration-role `DATABASE_URL` in `.migration.env`. Never commit either file.
+   Set `DATABASE_URL`, `PAYLOAD_SECRET`, `SITE_URL` and `CONTENT_INGEST_TOKEN` in `.env`. Set `SITE_NAME` if you want to customize the public site name. Set the migration-role `DATABASE_URL` in `.migration.env`. Never commit either file.
 
 4. Install dependencies:
 
