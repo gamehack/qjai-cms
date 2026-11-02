@@ -11,9 +11,10 @@ RUN pnpm install --frozen-lockfile
 FROM deps AS migrate
 COPY . .
 ENV NODE_ENV=production
-ENV PAYLOAD_SECRET=migration-only-placeholder-never-used-by-runtime
 ENV SITE_URL=http://localhost:3000
-CMD ["pnpm", "payload", "migrate"]
+# The migration runner needs a Payload secret to load config, but no real secret
+# is required. Keep this dummy value at process runtime, not in image ENV metadata.
+CMD ["sh", "-c", "PAYLOAD_SECRET=migration-only-placeholder-never-used-by-runtime exec pnpm payload migrate"]
 
 FROM base AS build
 RUN corepack enable && corepack prepare pnpm@10.20.0 --activate
@@ -21,10 +22,13 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 # No Supabase credentials in CI image build. All database-dependent pages are dynamic.
 ENV NODE_ENV=production
-ENV PAYLOAD_SECRET=build-only-placeholder-do-not-use-in-production
-ENV DATABASE_URL=postgresql://invalid:invalid@localhost:5432/placeholder
-ENV SITE_URL=http://localhost:3000
-RUN pnpm run generate:importmap && pnpm exec next build --experimental-build-mode compile
+# Build-time-only placeholders are scoped to this RUN layer and are not persisted
+# in the image's environment metadata.
+RUN export PAYLOAD_SECRET=build-only-placeholder-do-not-use-in-production \
+    DATABASE_URL=postgresql://invalid:invalid@localhost:5432/placeholder \
+    SITE_URL=http://localhost:3000 && \
+    pnpm run generate:importmap && \
+    pnpm exec next build --experimental-build-mode compile
 
 FROM node:24.22.1-alpine AS runtime
 WORKDIR /app
