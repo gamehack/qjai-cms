@@ -1,5 +1,5 @@
 import type { CollectionConfig } from 'payload'
-import { isAdminUser } from '../lib/access'
+import { assignInitialAdministrator, isAdminUser, preventNonAdminPromotion, preserveLastAdministrator } from '../lib/access'
 
 export const Users: CollectionConfig = {
   slug: 'users',
@@ -36,12 +36,12 @@ export const Users: CollectionConfig = {
           if (existing.totalDocs === 0) {
             // The dedicated first-user bootstrap is the only unauthenticated
             // path that may create an administrator.
-            return { ...data, isAdmin: true }
+            return assignInitialAdministrator(data, existing.totalDocs)
           }
         }
 
         // A non-admin can never promote an account through a crafted payload.
-        if (!isAdminUser(req.user)) return { ...data, isAdmin: false }
+        if (!isAdminUser(req.user)) return preventNonAdminPromotion(data, req.user)
 
         // Do not let the only administrator accidentally lock themselves out.
         if (operation === 'update' && data.isAdmin === false &&
@@ -51,7 +51,7 @@ export const Users: CollectionConfig = {
             where: { isAdmin: { equals: true } },
             overrideAccess: true,
           })
-          if (admins.totalDocs <= 1) return { ...data, isAdmin: true }
+          return preserveLastAdministrator(data, req.user, admins.totalDocs <= 1)
         }
         return data
       },
