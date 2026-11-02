@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-: "\${DATABASE_URL:?Set DATABASE_URL to the EMPTY target database connection string}"
-: "\${BACKUP_FILE:?Set BACKUP_FILE to a verified qjai_content custom-format dump}"
+: "${DATABASE_URL:?Set DATABASE_URL to the EMPTY target database connection string}"
+: "${BACKUP_FILE:?Set BACKUP_FILE to a verified qjai_content custom-format dump}"
 
-ALLOW_EMPTY_SCHEMA="\${ALLOW_EMPTY_SCHEMA:-0}"
+ALLOW_EMPTY_SCHEMA="${ALLOW_EMPTY_SCHEMA:-0}"
 if [[ "$ALLOW_EMPTY_SCHEMA" != "0" && "$ALLOW_EMPTY_SCHEMA" != "1" ]]; then
   echo "ERROR: ALLOW_EMPTY_SCHEMA must be 0 or 1." >&2
   exit 1
 fi
 
-if [[ "\${CONFIRM_RESTORE:-}" != "RESTORE_QJAI_CONTENT_TO_EMPTY_DATABASE" ]]; then
+if [[ "${CONFIRM_RESTORE:-}" != "RESTORE_QJAI_CONTENT_TO_EMPTY_DATABASE" ]]; then
   echo "ERROR: set CONFIRM_RESTORE=RESTORE_QJAI_CONTENT_TO_EMPTY_DATABASE to proceed." >&2
   exit 1
 fi
