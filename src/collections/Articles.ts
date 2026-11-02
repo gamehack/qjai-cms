@@ -23,6 +23,11 @@ export const Articles: CollectionConfig = {
       ({ data, originalDoc, req }) => {
         // Editors can prepare drafts and review requests, but cannot publish.
         const safeData = preventEditorPublication(data, req.user)
+        // Clear the previous publication timestamp when an administrator
+        // unpublishes content; a later publication receives a fresh timestamp.
+        if (safeData.status !== undefined && safeData.status !== 'published') {
+          return { ...safeData, publishedAt: null }
+        }
         if (safeData.status === 'published' && !safeData.publishedAt && !originalDoc?.publishedAt) {
           return { ...safeData, publishedAt: new Date().toISOString() }
         }
