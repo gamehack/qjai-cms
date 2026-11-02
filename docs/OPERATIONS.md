@@ -42,6 +42,14 @@ BASE_URL='https://your-cms.example' bash scripts/smoke-test.sh
 
 This checks database readiness, the homepage, unauthenticated ingestion rejection, and content-type validation. It does not create content.
 
+## CMS account and publication permissions
+
+- The first account created through Payload's dedicated first-user setup is promoted to administrator.
+- Existing installations promote the earliest existing account during the administrator-flag migration, preventing an upgrade from locking out the owner.
+- Administrators can manage users, publish articles, delete content and manage publication audit records.
+- Editors can create and edit non-published articles and manage categories. Editor attempts to set an article to `published` are converted to `review`; editors cannot edit or delete already-published articles.
+- Only administrators can delete articles or change account administrator status. There is no public user-registration endpoint after the first-user bootstrap.
+
 ## Operational requirements
 
 - Run a backup before every production migration.
