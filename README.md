@@ -74,6 +74,15 @@ See [Database operations](docs/OPERATIONS.md) for schema-scoped backup, guarded 
 
 ## Docker
 
+The Docker Compose example separates the one-shot migration job from the long-running app. Before deploying a release, back up the database and run the migration image for the exact tested commit:
+
+```sh
+IMAGE_SHA=<full-commit-sha> docker compose --profile migrate run --rm qjai-cms-migrate
+IMAGE_TAG=sha-<full-commit-sha> docker compose up -d qjai-cms
+```
+
+The migration service reads only `.migration.env`; the app reads only `.env`. Do not mount migration credentials into the app container. The app binds to loopback port 3100 for a reverse proxy, and its health check verifies database readiness.
+
 The Dockerfile provides two build targets:
 
 - `runtime`: the standalone Next.js application.
