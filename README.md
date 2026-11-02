@@ -68,6 +68,10 @@ Use TLS for remote PostgreSQL connections. Do not grant schema-creation privileg
 
 `POST /api/ingest` accepts authenticated JSON submissions and creates drafts only. It enforces a request-body limit and uses `source + externalId` for idempotency. Replayed submissions do not overwrite editorial changes. The endpoint cannot publish articles.
 
+## Database backup and recovery
+
+See [Database operations](docs/OPERATIONS.md) for schema-scoped backup, guarded restore and read-only deployment smoke checks.
+
 ## Docker
 
 The Dockerfile provides two build targets:
