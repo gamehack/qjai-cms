@@ -21,7 +21,6 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
             <Link className="brand" href="/"><span className="brand-symbol">Q</span> {siteName}</Link>
             <nav aria-label="主导航">
               <Link href="/">首页</Link>
-              <Link href="/admin">管理后台</Link>
             </nav>
           </div>
         </header>
