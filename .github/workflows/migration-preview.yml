@@ -82,6 +82,11 @@ jobs:
             IF delete_blocked IS DISTINCT FROM true THEN
               RAISE EXCEPTION 'publishing_records FK must use ON DELETE RESTRICT';
             END IF;
+            IF (SELECT is_nullable FROM information_schema.columns
+                WHERE table_schema = 'qjai_content' AND table_name = 'publishing_records'
+                  AND column_name = 'article_id') <> 'NO' THEN
+              RAISE EXCEPTION 'publishing_records.article_id must remain NOT NULL';
+            END IF;
 
             INSERT INTO qjai_content.articles
               (title, slug, summary, body_markdown, status, source)
