@@ -66,7 +66,7 @@ Use TLS for remote PostgreSQL connections. Do not grant schema-creation privileg
 
 ## Content ingestion
 
-`POST /api/ingest` accepts authenticated JSON submissions and creates drafts only. It enforces a request-body limit and uses `source + externalId` for idempotency. Replayed submissions do not overwrite editorial changes. The endpoint cannot publish articles.
+`POST /api/ingest` accepts authenticated `application/json` submissions and creates drafts only. It enforces a request-body limit, validates optional source URLs as absolute HTTPS URLs without embedded credentials, and uses `source + externalId` for idempotency. Replayed submissions do not overwrite editorial changes. The endpoint cannot publish articles. Unsupported content types receive HTTP 415; invalid payload fields receive HTTP 422. The `/api/health` endpoint performs a database reachability check and returns HTTP 503 when PostgreSQL is unavailable.
 
 ## Docker
 
