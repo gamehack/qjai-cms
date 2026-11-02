@@ -1,5 +1,5 @@
 import type { CollectionConfig } from 'payload'
-import { isAdminUser, isEditorUser } from '../lib/access'
+import { isAdminUser, isEditorUser, preventEditorPublication } from '../lib/access'
 
 export const Articles: CollectionConfig = {
   slug: 'articles',
@@ -19,12 +19,7 @@ export const Articles: CollectionConfig = {
   },
   hooks: {
     beforeChange: [
-      ({ data, req }) => {
-        if (!isAdminUser(req.user) && data.status === 'published') {
-          return { ...data, status: 'review', publishedAt: null }
-        }
-        return data
-      },
+      ({ data, req }) => preventEditorPublication(data, req.user),
     ],
   },
   fields: [
