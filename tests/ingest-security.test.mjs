@@ -68,3 +68,27 @@ test('accepts generic lowercase source identifiers', () => {
   assert.equal(isValidSource(''), false)
   assert.equal(isValidSource('a'.repeat(51)), false)
 })
+
+test('validates source IDs without accepting paths or whitespace', () => {
+  assert.equal(isValidSource('valid_source-2'), true)
+  assert.equal(isValidSource('../admin'), false)
+  assert.equal(isValidSource('source/child'), false)
+})
+
+test('accepts only credential-free HTTPS source URLs', () => {
+  assert.equal(isValidOriginalUrl('https://example.com/article'), true)
+  assert.equal(isValidOriginalUrl('http://example.com/article'), false)
+  assert.equal(isValidOriginalUrl('javascript:alert(1)'), false)
+  assert.equal(isValidOriginalUrl('https://user:pass@example.com/'), false)
+  assert.equal(isValidOriginalUrl('not a url'), false)
+  assert.equal(isValidOriginalUrl('https://example.com/' + 'a'.repeat(2000)), false)
+})
+
+test('normalizes external IDs and produces stable 128-bit slug suffixes', () => {
+  const key = buildSourceKey('example-source', '  external-42  ')
+  assert.equal(key, 'example-source:external-42')
+  const slug = buildArticleSlug(key)
+  assert.match(slug, /^example-source-[a-f0-9]{32}$/)
+  assert.equal(buildArticleSlug(key), slug)
+  assert.notEqual(buildArticleSlug(key), buildArticleSlug('example-source:external-43'))
+})
