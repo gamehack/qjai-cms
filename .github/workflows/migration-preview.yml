@@ -149,6 +149,13 @@ jobs:
           fi
           node scripts/auth-integration-test.mjs
 
+      - name: Verify production Docker and Compose runtime
+        env:
+          DATABASE_URL: postgresql://cms_test:ci_only_ephemeral_password@host.docker.internal:5432/cms_test
+          CONTENT_INGEST_TOKEN: ci-ingest-token-for-integration-tests-1234567890
+          SITE_URL: http://127.0.0.1:3100
+        run: bash scripts/docker-runtime-acceptance.sh
+
       - name: Verify backup and restore round-trip
         run: |
           set -Eeuo pipefail

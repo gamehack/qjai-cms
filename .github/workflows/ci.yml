@@ -24,7 +24,7 @@ jobs:
       - name: Install locked dependencies
         run: pnpm install --frozen-lockfile
       - name: Validate operational shell scripts
-        run: bash -n scripts/db-backup.sh scripts/db-restore.sh scripts/smoke-test.sh
+        run: bash -n scripts/db-backup.sh scripts/db-restore.sh scripts/smoke-test.sh scripts/docker-runtime-acceptance.sh
       - name: Validate Docker Compose configuration
         run: |
           touch .env .migration.env
