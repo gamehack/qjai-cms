@@ -1,14 +1,15 @@
 import type { CollectionConfig } from 'payload'
+import { isAdminUser } from '../lib/access'
 
-// Track delivery outcomes for each publication channel.
+// Delivery records are an administrative audit trail.
 export const PublishingRecords: CollectionConfig = {
   slug: 'publishing-records',
   admin: { useAsTitle: 'externalReference' },
   access: {
-    read: ({ req }) => Boolean(req.user),
-    create: ({ req }) => Boolean(req.user),
-    update: ({ req }) => Boolean(req.user),
-    delete: ({ req }) => Boolean(req.user),
+    read: ({ req }) => isAdminUser(req.user),
+    create: ({ req }) => isAdminUser(req.user),
+    update: ({ req }) => isAdminUser(req.user),
+    delete: ({ req }) => isAdminUser(req.user),
   },
   fields: [
     { name: 'article', type: 'relationship', relationTo: 'articles', required: true },
