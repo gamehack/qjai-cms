@@ -7,10 +7,22 @@ export const Articles: CollectionConfig = {
     defaultColumns: ['title', 'status', 'source', 'publishedAt', 'updatedAt'],
   },
   access: {
+    // Public visitors can only query published articles. Authenticated CMS
+    // users can review drafts and manage editorial content.
     read: ({ req }) => req.user ? true : { status: { equals: 'published' } },
     create: ({ req }) => Boolean(req.user),
     update: ({ req }) => Boolean(req.user),
     delete: ({ req }) => Boolean(req.user),
+  },
+  hooks: {
+    beforeChange: [
+      ({ data, originalDoc }) => {
+        if (data.status === 'published' && !data.publishedAt && !originalDoc?.publishedAt) {
+          return { ...data, publishedAt: new Date().toISOString() }
+        }
+        return data
+      },
+    ],
   },
   fields: [
     { name: 'title', type: 'text', required: true },
