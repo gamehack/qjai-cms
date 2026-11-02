@@ -66,9 +66,22 @@ Use TLS for remote PostgreSQL connections. Do not grant schema-creation privileg
 
 ## Content ingestion
 
-`POST /api/ingest` accepts authenticated `application/json` submissions and creates drafts only. It enforces a request-body limit, validates optional source URLs as absolute HTTPS URLs without embedded credentials, and uses `source + externalId` for idempotency. Replayed submissions do not overwrite editorial changes. The endpoint cannot publish articles. Unsupported content types receive HTTP 415; invalid payload fields receive HTTP 422. The `/api/health` endpoint performs a database reachability check and returns HTTP 503 when PostgreSQL is unavailable.
+`POST /api/ingest` accepts authenticated JSON submissions and creates drafts only. It enforces a request-body limit and uses `source + externalId` for idempotency. Replayed submissions do not overwrite editorial changes. The endpoint cannot publish articles.
+
+## Database backup and recovery
+
+See [Database operations](docs/OPERATIONS.md) for schema-scoped backup, guarded restore and read-only deployment smoke checks.
 
 ## Docker
+
+The Docker Compose example separates the one-shot migration job from the long-running app. Before deploying a release, back up the database and run the migration image for the exact tested commit:
+
+```sh
+IMAGE_SHA=<full-commit-sha> docker compose --profile migrate run --rm qjai-cms-migrate
+IMAGE_TAG=sha-<full-commit-sha> docker compose up -d qjai-cms
+```
+
+The migration service reads only `.migration.env`; the app reads only `.env`. Do not mount migration credentials into the app container. The app binds to loopback port 3100 for a reverse proxy, and its health check verifies database readiness.
 
 The Dockerfile provides two build targets:
 
