@@ -72,6 +72,10 @@ Use TLS for remote PostgreSQL connections. Do not grant schema-creation privileg
 
 Use the included `scripts/db-backup.sh`, `scripts/db-restore.sh`, and `scripts/smoke-test.sh` utilities for schema-scoped backup, guarded restore, and read-only deployment checks. Review the script comments and your database provider's backup documentation before production use.
 
+The backup and restore scripts reject empty `qjai_content` schemas by default. For an intentional first-migration baseline only, set `ALLOW_EMPTY_SCHEMA=1` on both commands. The backup archive must contain the `qjai_content` schema entry, and restore still requires a new empty target database. Do not use this flag to bypass a missing or incorrectly selected database/schema. The dump is schema-scoped and includes both schema definitions and data; it does not include Supabase Auth, Storage, Edge Functions, project settings or database roles.
+
+Use `pg_dump` and `pg_restore` from the same PostgreSQL major version as the server, or a newer major version. An older client cannot dump from a newer-major server.
+
 ## Docker
 
 The Docker Compose example separates the one-shot migration job from the long-running app. Before deploying a release, back up the database and run the migration image for the exact tested commit:
@@ -101,6 +105,6 @@ Do not open public issues containing credentials, private URLs, personal data, c
 
 ## License
 
-Original project code is licensed under the MIT License. See [LICENSE](LICENSE). Third-party dependencies retain their respective licenses; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+Original project code is licensed under the MIT License. See `LICENSE`. Third-party dependencies retain their respective licenses; see `THIRD_PARTY_NOTICES.md`.
 
 The qjai-cms name and associated marks are not licensed by the MIT License.
