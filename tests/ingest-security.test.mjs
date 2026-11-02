@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { isAuthorized, isValidSource, readLimitedBody } from '../src/lib/ingest-security.ts'
+import { buildArticleSlug, buildSourceKey, isAuthorized, isValidOriginalUrl, isValidSource, readLimitedBody } from '../src/lib/ingest-security.ts'
 
 function streamFrom(chunks) {
   return new ReadableStream({
@@ -69,12 +69,26 @@ test('accepts generic lowercase source identifiers', () => {
   assert.equal(isValidSource('a'.repeat(51)), false)
 })
 
-test('accepts only absolute HTTPS source URLs without credentials', async () => {
-  const { isValidHttpsUrl } = await import('../src/lib/ingest-security.ts')
-  assert.equal(isValidHttpsUrl('https://example.com/article'), true)
-  assert.equal(isValidHttpsUrl('http://example.com/article'), false)
-  assert.equal(isValidHttpsUrl('https://user:pass@example.com/'), false)
-  assert.equal(isValidHttpsUrl('https://'), false)
-  assert.equal(isValidHttpsUrl('javascript:alert(1)'), false)
-  assert.equal(isValidHttpsUrl('https://example.com/' + 'a'.repeat(2100)), false)
+test('validates source IDs without accepting paths or whitespace', () => {
+  assert.equal(isValidSource('valid_source-2'), true)
+  assert.equal(isValidSource('../admin'), false)
+  assert.equal(isValidSource('source/child'), false)
+})
+
+test('accepts only credential-free HTTPS source URLs', () => {
+  assert.equal(isValidOriginalUrl('https://example.com/article'), true)
+  assert.equal(isValidOriginalUrl('http://example.com/article'), false)
+  assert.equal(isValidOriginalUrl('javascript:alert(1)'), false)
+  assert.equal(isValidOriginalUrl('https://user:pass@example.com/'), false)
+  assert.equal(isValidOriginalUrl('not a url'), false)
+  assert.equal(isValidOriginalUrl('https://example.com/' + 'a'.repeat(2000)), false)
+})
+
+test('normalizes external IDs and produces stable 128-bit slug suffixes', () => {
+  const key = buildSourceKey('example-source', '  external-42  ')
+  assert.equal(key, 'example-source:external-42')
+  const slug = buildArticleSlug(key)
+  assert.match(slug, /^example-source-[a-f0-9]{32}$/)
+  assert.equal(buildArticleSlug(key), slug)
+  assert.notEqual(buildArticleSlug(key), buildArticleSlug('example-source:external-43'))
 })
