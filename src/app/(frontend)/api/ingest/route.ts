@@ -1,8 +1,7 @@
-import { createHash } from 'node:crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 import config from '@payload-config'
-import { isAuthorized, isValidSource, readLimitedBody } from '@/lib/ingest-security'
+import { buildArticleSlug, buildSourceKey, isAuthorized, isValidOriginalUrl, isValidSource, readLimitedBody } from '@/lib/ingest-security'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -11,16 +10,6 @@ const MAX_BODY_BYTES = 220_000
 
 function validText(value: unknown, max: number): value is string {
   return typeof value === 'string' && value.trim().length > 0 && value.length <= max
-}
-
-function validOriginalUrl(value: unknown): value is string {
-  if (typeof value !== 'string' || value.length > 2000) return false
-  try {
-    const url = new URL(value)
-    return url.protocol === 'https:' && !url.username && !url.password
-  } catch {
-    return false
-  }
 }
 
 function json(data: Record<string, unknown>, status: number) {
@@ -76,16 +65,14 @@ export async function POST(req: NextRequest) {
     return json({ error: 'invalid_content' }, 422)
   }
   if (data.originalUrl !== undefined && data.originalUrl !== null && data.originalUrl !== '' &&
-      !validOriginalUrl(data.originalUrl)) {
+      !isValidOriginalUrl(data.originalUrl)) {
     return json({ error: 'invalid_original_url' }, 422)
   }
 
   const typedSource = source
   const externalId = (data.externalId as string).trim()
-  const sourceKey = `${typedSource}:${externalId}`
-  // 128-bit slug suffix gives ample collision resistance while keeping slugs compact.
-  const digest = createHash('sha256').update(sourceKey).digest('hex').slice(0, 32)
-  const slug = `${typedSource}-${digest}`
+  const sourceKey = buildSourceKey(typedSource, externalId)
+  const slug = buildArticleSlug(sourceKey)
   const originalUrl = typeof data.originalUrl === 'string' && data.originalUrl.length
     ? data.originalUrl
     : undefined
