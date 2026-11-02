@@ -65,5 +65,12 @@ jobs:
           exposed=$(psql "$DATABASE_URL" -tAc "SELECT count(*) FROM pg_tables WHERE schemaname = 'public'")
           echo "Application tables in public schema: $exposed"
           test "$exposed" -eq 0
+      - name: Verify publication records cascade on article deletion
+        run: |
+          article_id=$(psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -tAc "INSERT INTO qjai_content.articles (title, slug, summary, body_markdown, status, source) VALUES ('cascade test', 'cascade-test', 'test summary', 'test body', 'draft', 'ci') RETURNING id")
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "INSERT INTO qjai_content.publishing_records (article_id, channel, state) VALUES ($article_id, 'website', 'pending')"
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "DELETE FROM qjai_content.articles WHERE id = $article_id"
+          remaining=$(psql "$DATABASE_URL" -tAc "SELECT count(*) FROM qjai_content.publishing_records WHERE article_id = $article_id")
+          test "$remaining" -eq 0
       - name: Show migration status
         run: pnpm payload migrate:status
