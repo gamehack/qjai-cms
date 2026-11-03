@@ -56,14 +56,6 @@ export default async function SiteLayout({ children }: { children: ReactNode }) 
         <main>{children}</main>
         <footer className="footer">
           <div className="container footer-content">
-            <div className="footer-brand">
-              <img className="brand-mark" src="/brand/qianjie-ai-mark.svg" alt="" />
-              <span className="brand-text">{siteName}</span>
-              <p className="footer-tagline">潜伏 AI 世界，享受智能生活。</p>
-            </div>
-            <nav className="footer-nav" aria-label="尾部导航">
-              <Link href="https://podcast.qjai.org/" target="_blank" rel="noopener noreferrer" className="footer-link">播客节目</Link>
-            </nav>
             <p className="footer-copy">© {new Date().getFullYear()} {siteName} · 内容仅供信息分享，具体判断请以原始来源为准。</p>
           </div>
         </footer>
