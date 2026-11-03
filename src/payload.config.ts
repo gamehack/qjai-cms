@@ -18,8 +18,12 @@ export default buildConfig({
     theme: 'dark',
     meta: {
       titleSuffix: ' · 潜界 AI 内容管理',
-      favicon: '/brand/qianjie-ai-mark.svg',
-      ogImage: '/brand/qianjie-ai-mark.svg',
+      icons: {
+        icon: '/brand/qianjie-ai-mark.svg',
+      },
+      openGraph: {
+        images: ['/brand/qianjie-ai-mark.svg'],
+      },
     },
     components: {
       graphics: {
