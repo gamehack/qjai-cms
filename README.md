@@ -68,6 +68,29 @@ Use TLS for remote PostgreSQL connections. Do not grant schema-creation privileg
 
 `POST /api/ingest` accepts authenticated `application/json` submissions and creates drafts only. It enforces a request-body limit, validates optional source URLs as credential-free HTTPS URLs, and uses `source + externalId` for idempotency. Replayed submissions do not overwrite editorial changes. Unsupported content types receive HTTP 415; invalid fields receive HTTP 422. The endpoint cannot publish articles. `/api/health` checks database readiness and returns HTTP 503 if PostgreSQL is unavailable.
 
+### Optional category for ingestion
+
+Clients may send `categorySlug` to associate a new draft with an existing CMS category:
+
+```json
+{
+  "source": "producthunt",
+  "externalId": "2026-11-04",
+  "title": "Example article",
+  "summary": "Example summary",
+  "bodyMarkdown": "Article body",
+  "categorySlug": "producthunt"
+}
+```
+
+`categorySlug` is optional. Omitting it or sending `null` creates an unclassified draft.
+A nonempty exact, case-sensitive category slug associates that category; an invalid slug
+or one not found in `categories` returns HTTP 422 without creating an article.
+The database category ID is resolved internally and must not be supplied by clients.
+The existing `source + externalId` idempotency contract is unchanged: a replay
+returns the original article without overwriting an editor-assigned category,
+title, body, status, or other fields. Imported articles are always drafts.
+
 ## Database backup and recovery
 
 Use the included `scripts/db-backup.sh`, `scripts/db-restore.sh`, and `scripts/smoke-test.sh` utilities for schema-scoped backup, guarded restore, and read-only deployment checks. Review the script comments and your database provider's backup documentation before production use.

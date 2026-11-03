@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 import config from '@payload-config'
-import { buildArticleSlug, buildSourceKey, isAuthorized, isValidOriginalUrl, isValidSource, readLimitedBody } from '@/lib/ingest-security'
+import { buildArticleSlug, buildSourceKey, isAuthorized, isValidCategorySlug, isValidOriginalUrl, isValidSource, readLimitedBody } from '@/lib/ingest-security'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -69,6 +69,14 @@ export async function POST(req: NextRequest) {
     return json({ error: 'invalid_original_url' }, 422)
   }
 
+  // categorySlug is optional; null is equivalent to omission.
+  // Validate before any article lookup, so invalid category requests never write.
+  const categorySlug = data.categorySlug
+  if (categorySlug !== undefined && categorySlug !== null &&
+      !isValidCategorySlug(categorySlug)) {
+    return json({ error: 'invalid_category_slug' }, 422)
+  }
+
   const typedSource = source
   const externalId = (data.externalId as string).trim()
   const sourceKey = buildSourceKey(typedSource, externalId)
@@ -79,6 +87,21 @@ export async function POST(req: NextRequest) {
 
   try {
     const payload = await getPayload({ config })
+    let categoryId: string | number | undefined
+    if (typeof categorySlug === 'string') {
+      const categories = await payload.find({
+        collection: 'categories',
+        where: { slug: { equals: categorySlug } },
+        limit: 1,
+        depth: 0,
+        overrideAccess: false,
+      })
+      if (!categories.docs.length) {
+        return json({ error: 'category_not_found' }, 422)
+      }
+      categoryId = categories.docs[0].id
+    }
+
     const found = await payload.find({
       collection: 'articles',
       where: { sourceKey: { equals: sourceKey } },
@@ -101,6 +124,7 @@ export async function POST(req: NextRequest) {
           source: typedSource,
           sourceKey,
           originalUrl,
+          ...(categoryId === undefined ? {} : { category: categoryId }),
           aiGenerated: true,
           status: 'draft',
         },

@@ -65,6 +65,12 @@ export function isValidSource(value: unknown): value is string {
   return typeof value === 'string' && /^[a-z0-9][a-z0-9_-]{0,49}$/.test(value)
 }
 
+// Preserve CMS-defined slug case; reject paths, whitespace, and URL metacharacters.
+export function isValidCategorySlug(value: unknown): value is string {
+  return typeof value === 'string' &&
+    /^[\p{L}\p{N}][\p{L}\p{N}_-]{0,99}$/u.test(value)
+}
+
 export function isValidOriginalUrl(value: unknown): value is string {
   if (typeof value !== 'string' || value.length > 2000) return false
   try {

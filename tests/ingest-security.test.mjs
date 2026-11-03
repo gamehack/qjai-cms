@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { buildArticleSlug, buildSourceKey, isAuthorized, isValidOriginalUrl, isValidSource, readLimitedBody } from '../src/lib/ingest-security.ts'
+import { buildArticleSlug, buildSourceKey, isAuthorized, isValidCategorySlug, isValidOriginalUrl, isValidSource, readLimitedBody } from '../src/lib/ingest-security.ts'
 
 function streamFrom(chunks) {
   return new ReadableStream({
@@ -91,4 +91,15 @@ test('normalizes external IDs and produces stable 128-bit slug suffixes', () => 
   assert.match(slug, /^example-source-[a-f0-9]{32}$/)
   assert.equal(buildArticleSlug(key), slug)
   assert.notEqual(buildArticleSlug(key), buildArticleSlug('example-source:external-43'))
+})
+
+
+test('validates optional category slugs and preserves case', () => {
+  for (const slug of ['producthunt', 'x', 'TrustMRR', 'category-1', '中文分类', 'tag_name']) {
+    assert.equal(isValidCategorySlug(slug), true, slug)
+  }
+  for (const invalid of ['', ' ', ' x', 'x ', '/category/x', 'x/y', 'x?debug',
+                         'x#fragment', 'x%20', 123, null, [], {}, 'a'.repeat(101)]) {
+    assert.equal(isValidCategorySlug(invalid), false, String(invalid))
+  }
 })
