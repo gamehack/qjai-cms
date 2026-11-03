@@ -159,6 +159,9 @@ jobs:
           fi
           node scripts/auth-integration-test.mjs
 
+      - name: Create external Traefik network for Compose runtime acceptance
+        run: docker network inspect traefik_default >/dev/null 2>&1 || docker network create traefik_default
+
       - name: Verify production Docker and Compose runtime
         env:
           DATABASE_URL: postgresql://cms_test:ci_only_ephemeral_password@host.docker.internal:5432/cms_test
