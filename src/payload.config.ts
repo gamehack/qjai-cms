@@ -15,6 +15,22 @@ export default buildConfig({
   admin: {
     user: Users.slug,
     importMap: { baseDir: dirname },
+    theme: 'dark',
+    meta: {
+      titleSuffix: ' · 潜界 AI 内容管理',
+      icons: {
+        icon: '/brand/qianjie-ai-mark.svg',
+      },
+      openGraph: {
+        images: ['/brand/qianjie-ai-mark.svg'],
+      },
+    },
+    components: {
+      graphics: {
+        Icon: '/components/payload/Icon',
+        Logo: '/components/payload/Logo',
+      },
+    },
   },
   collections: [Users, Articles, Categories, PublishingRecords],
   editor: lexicalEditor(),
