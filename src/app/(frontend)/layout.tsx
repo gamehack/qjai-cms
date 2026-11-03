@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 import Link from 'next/link'
+import { getPublicCategories } from '@/lib/content'
 import './styles.css'
 
 const siteName = process.env.SITE_NAME || '潜界 AI'
@@ -21,7 +22,10 @@ export const metadata: Metadata = {
   icons: [{ url: '/brand/qianjie-ai-mark.svg', sizes: 'any', type: 'image/svg+xml' }],
 }
 
-export default function SiteLayout({ children }: { children: ReactNode }) {
+export const dynamic = 'force-dynamic'
+
+export default async function SiteLayout({ children }: { children: ReactNode }) {
+  const categories = await getPublicCategories()
   return (
     <html lang="zh-CN">
       <body>
@@ -31,10 +35,21 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
               <img className="brand-mark" src="/brand/qianjie-ai-mark.svg" alt="" />
               <span className="brand-text">{siteName}</span>
             </Link>
-            <nav aria-label="主导航">
-              <Link href="https://qjai.org/" target="_blank" rel="noopener noreferrer">主站</Link>
-              <Link href="https://tools.qjai.org/" target="_blank" rel="noopener noreferrer">工具</Link>
-              <Link href="https://podcast.qjai.org/" target="_blank" rel="noopener noreferrer">播客</Link>
+            <nav className="header-nav" aria-label="主导航">
+              {categories.length > 0 && (
+                <div className="category-nav" role="group" aria-label="内容分类">
+                  {categories.map(category => (
+                    <Link href={`/category/${encodeURIComponent(category.slug)}`} key={category.id}>
+                      {category.name}
+                    </Link>
+                  ))}
+                </div>
+              )}
+              <div className={`external-nav${categories.length > 0 ? ' has-categories' : ''}`} role="group" aria-label="站点入口">
+                <Link href="https://qjai.org/" target="_blank" rel="noopener noreferrer">主站</Link>
+                <Link href="https://tools.qjai.org/" target="_blank" rel="noopener noreferrer">工具</Link>
+                <Link href="https://podcast.qjai.org/" target="_blank" rel="noopener noreferrer">播客</Link>
+              </div>
             </nav>
           </div>
         </header>

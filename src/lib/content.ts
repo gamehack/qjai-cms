@@ -37,3 +37,23 @@ export async function getArticleBySlug(slug: string) {
   })
   return (result.docs[0] || null) as PublicArticle | null
 }
+
+
+export type PublicCategory = {
+  id: string | number
+  name: string
+  slug: string
+  description?: string | null
+}
+
+export async function getPublicCategories() {
+  const payload = await getPayload({ config })
+  const result = await payload.find({
+    collection: 'categories',
+    sort: 'createdAt',
+    limit: 100,
+    depth: 0,
+    overrideAccess: false,
+  })
+  return result.docs as unknown as PublicCategory[]
+}
