@@ -8,12 +8,22 @@ on:
       - "src/**"
       - "package.json"
       - "pnpm-lock.yaml"
+      - "compose.yaml"
+      - ".env.example"
+      - ".migration.env.example"
+      - "scripts/docker-runtime-acceptance.sh"
+      - "tests/deployment-security.test.mjs"
   pull_request:
     paths:
       - ".github/workflows/migration-preview.yml"
       - "src/**"
       - "package.json"
       - "pnpm-lock.yaml"
+      - "compose.yaml"
+      - ".env.example"
+      - ".migration.env.example"
+      - "scripts/docker-runtime-acceptance.sh"
+      - "tests/deployment-security.test.mjs"
 
 permissions:
   contents: read

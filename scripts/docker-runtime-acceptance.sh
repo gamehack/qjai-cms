@@ -9,6 +9,8 @@ IMAGE_SHA="${IMAGE_SHA:-ci}"
 SITE_URL="${SITE_URL:-http://127.0.0.1:3100}"
 SITE_NAME="${SITE_NAME:-qjai-cms CI}"
 COMPOSE_CI_FILE="$(mktemp)"
+CI_CA_DIR="$(mktemp -d)"
+CI_CA_FILE="$CI_CA_DIR/supabase-ca.crt"
 
 if [[ -e .env || -e .migration.env ]]; then
   echo "ERROR: refusing to overwrite existing .env or .migration.env files." >&2
@@ -22,17 +24,41 @@ cleanup() {
       docker compose -f compose.yaml -f "$COMPOSE_CI_FILE" down --remove-orphans >/dev/null 2>&1 || true
   fi
   rm -f .env .migration.env "$COMPOSE_CI_FILE"
+  rm -rf -- "$CI_CA_DIR"
 }
 trap cleanup EXIT
 
-cat > "$COMPOSE_CI_FILE" <<'YAML'
+# This acceptance test uses a disposable local CI database without TLS.
+# Generate a test-only CA so the production CA bind mount can be validated
+# without requiring /etc/qjai-cms on ephemeral GitHub-hosted runners.
+# The private key is never mounted into a container or committed.
+openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 \
+  -subj '/CN=qjai-cms-ephemeral-ci-ca' \
+  -keyout "$CI_CA_DIR/ci-key.pem" -out "$CI_CA_FILE" >/dev/null 2>&1
+chmod 644 "$CI_CA_FILE"
+
+cat > "$COMPOSE_CI_FILE" <<YAML
 services:
   qjai-cms:
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    volumes:
+      - type: bind
+        source: $CI_CA_FILE
+        target: /run/secrets/supabase-ca.crt
+        read_only: true
+        bind:
+          create_host_path: false
   qjai-cms-migrate:
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    volumes:
+      - type: bind
+        source: $CI_CA_FILE
+        target: /run/secrets/supabase-ca.crt
+        read_only: true
+        bind:
+          create_host_path: false
 YAML
 
 echo "Building the production runtime image..."
