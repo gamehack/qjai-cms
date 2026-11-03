@@ -197,4 +197,81 @@ const duplicateData = await duplicateIngest.json()
 status({ status: duplicateIngest.status, data: duplicateData }, 200, 'duplicate ingest')
 assert.equal(duplicateData.duplicate, true)
 
+
+console.log('Verify optional categorySlug validation, association, and replay protection')
+const ingest = async body => {
+  const response = await fetch(`${baseURL}/api/ingest`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${ingestToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  return { status: response.status, data: await response.json() }
+}
+const categorySlug = `ci-category-${suffix}`
+const otherSlug = `ci-other-${suffix}`
+const firstCategory = await request('/categories', {
+  method: 'POST',
+  token: adminToken,
+  body: { name: 'CI category', slug: categorySlug },
+})
+status(firstCategory, 201, 'administrator creates category')
+const secondCategory = await request('/categories', {
+  method: 'POST',
+  token: adminToken,
+  body: { name: 'CI editor category', slug: otherSlug },
+})
+status(secondCategory, 201, 'administrator creates secondary category')
+const categoryId = firstCategory.data.doc.id
+const otherCategoryId = secondCategory.data.doc.id
+const getCategoryId = value => value && typeof value === 'object' ? value.id : value
+
+for (const invalidSlug of ['', ' ', ' x', '/path', 12, false, [], {}]) {
+  const result = await ingest({
+    ...ingestBody, externalId: `invalid-${suffix}`, categorySlug: invalidSlug,
+  })
+  status(result, 422, 'invalid category slug')
+  assert.equal(result.data.error, 'invalid_category_slug')
+}
+const missingCategory = await ingest({
+  ...ingestBody, externalId: `missing-${suffix}`, categorySlug: `missing-${suffix}`,
+})
+status(missingCategory, 422, 'unknown category slug')
+assert.equal(missingCategory.data.error, 'category_not_found')
+
+const categorized = await ingest({
+  ...ingestBody, externalId: `categorized-${suffix}`, categorySlug,
+})
+status(categorized, 201, 'categorized ingest')
+assert.equal(categorized.data.status, 'draft')
+const categorizedArticle = await request(`/articles/${categorized.data.id}`, { token: adminToken })
+status(categorizedArticle, 200, 'read categorized article')
+assert.equal(String(getCategoryId(categorizedArticle.data.category)), String(categoryId))
+assert.equal(categorizedArticle.data.status, 'draft')
+
+// A later manual editorial category change is never overwritten by a replay.
+const editorialCategoryChange = await request(`/articles/${categorized.data.id}`, {
+  method: 'PATCH', token: adminToken, body: { category: otherCategoryId },
+})
+status(editorialCategoryChange, 200, 'manual editor category change')
+const replay = await ingest({
+  ...ingestBody,
+  externalId: `categorized-${suffix}`,
+  title: 'This replay must not overwrite editorial title',
+  categorySlug,
+})
+status(replay, 200, 'categorized duplicate')
+assert.equal(replay.data.duplicate, true)
+const afterReplay = await request(`/articles/${categorized.data.id}`, { token: adminToken })
+status(afterReplay, 200, 'read article after replay')
+assert.equal(String(getCategoryId(afterReplay.data.category)), String(otherCategoryId))
+assert.equal(afterReplay.data.title, ingestBody.title)
+
+const nullCategory = await ingest({
+  ...ingestBody, externalId: `null-category-${suffix}`, categorySlug: null,
+})
+status(nullCategory, 201, 'null category treated as omitted')
+const nullArticle = await request(`/articles/${nullCategory.data.id}`, { token: adminToken })
+status(nullArticle, 200, 'read unclassified article')
+assert.equal(nullArticle.data.category ?? null, null)
+
 console.log('PASS: auth bootstrap, role permissions, publication visibility and ingestion contract')
