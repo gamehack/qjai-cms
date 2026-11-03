@@ -15,6 +15,17 @@ services:
           create_host_path: false
     ports:
       - "127.0.0.1:3100:3000"
+    networks:
+      - default
+      - traefik_default
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik_default"
+      - "traefik.http.routers.qjai-cms.rule=Host(`qjai.org`)"
+      - "traefik.http.routers.qjai-cms.entrypoints=websecure"
+      - "traefik.http.routers.qjai-cms.tls=true"
+      - "traefik.http.routers.qjai-cms.tls.certresolver=letsencrypt"
+      - "traefik.http.services.qjai-cms.loadbalancer.server.port=3000"
     mem_limit: 1024m
     cpus: 1.0
     pids_limit: 256
@@ -44,3 +55,7 @@ services:
     init: true
     security_opt:
       - no-new-privileges:true
+
+networks:
+  traefik_default:
+    external: true
