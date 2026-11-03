@@ -85,6 +85,12 @@ IMAGE_SHA=<full-commit-sha> docker compose --profile migrate run --rm qjai-cms-m
 IMAGE_TAG=sha-<full-commit-sha> docker compose up -d qjai-cms
 ```
 
+### Production database TLS
+
+Production PostgreSQL connections must use `sslmode=verify-full` with the Supabase CA certificate. Install the certificate on the host at `/etc/qjai-cms/supabase-ca.crt`; Compose mounts that file read-only into both the runtime and migration containers at `/run/secrets/supabase-ca.crt`. Set each production `DATABASE_URL` to include `sslrootcert=/run/secrets/supabase-ca.crt`.
+
+Keep runtime and migration passwords only in their respective production environment files. Never commit passwords, `.env`, or `.migration.env`; these files must remain covered by the repository's Git ignore rules. Do not copy the CA certificate into the repository or container image.
+
 The migration service reads only `.migration.env`; the app reads only `.env`. Do not mount migration credentials into the app container. The app binds to loopback port 3100 for a reverse proxy, and its health check verifies database readiness.
 
 The Dockerfile provides two build targets:

@@ -6,6 +6,13 @@ services:
     init: true
     env_file:
       - .env
+    volumes:
+      - type: bind
+        source: /etc/qjai-cms/supabase-ca.crt
+        target: /run/secrets/supabase-ca.crt
+        read_only: true
+        bind:
+          create_host_path: false
     ports:
       - "127.0.0.1:3100:3000"
     mem_limit: 1024m
@@ -26,6 +33,13 @@ services:
     profiles: ["migrate"]
     env_file:
       - .migration.env
+    volumes:
+      - type: bind
+        source: /etc/qjai-cms/supabase-ca.crt
+        target: /run/secrets/supabase-ca.crt
+        read_only: true
+        bind:
+          create_host_path: false
     restart: "no"
     init: true
     security_opt:
