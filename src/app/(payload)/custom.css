@@ -1,0 +1,315 @@
+/* 潜界 AI Admin — visual language aligned with podcast.qjai.org */
+:root {
+  --qjai-bg: #081225;
+  --qjai-bg-alt: #0c1830;
+  --qjai-panel: #101d36;
+  --qjai-line: rgba(176, 205, 238, 0.13);
+  --qjai-text: #eef6ff;
+  --qjai-muted: #9cacbf;
+  --qjai-cyan: #20dad2;
+  --qjai-violet: #8493ff;
+  --qjai-shadow: 0 28px 90px rgba(0, 3, 15, 0.32);
+}
+
+html[data-theme='dark'] {
+  color-scheme: dark;
+
+  /* Payload v3 elevation ramp: dark mode maps elevation tokens to this palette. */
+  --color-base-0: #ffffff;
+  --color-base-50: #f7faff;
+  --color-base-100: #eef6ff;
+  --color-base-150: #e2eaf5;
+  --color-base-200: #d3dfed;
+  --color-base-250: #c3d1e2;
+  --color-base-300: #b2c2d6;
+  --color-base-350: #9cacbf;
+  --color-base-400: #879bb4;
+  --color-base-450: #7488a3;
+  --color-base-500: #5f7390;
+  --color-base-550: #4b5f7d;
+  --color-base-600: #3b4e6b;
+  --color-base-650: #2b3d5a;
+  --color-base-700: #20314d;
+  --color-base-750: #172741;
+  --color-base-800: #101d36;
+  --color-base-850: #0c1830;
+  --color-base-900: #081225;
+  --color-base-950: #060d1c;
+  --color-base-1000: #030812;
+
+  /* Cyan is the primary brand accent and Payload's success/focus color. */
+  --color-success-50: #e5fffc;
+  --color-success-100: #d0fffb;
+  --color-success-150: #b8fff7;
+  --color-success-200: #98fff4;
+  --color-success-250: #78f9ee;
+  --color-success-300: #58efe6;
+  --color-success-350: #39e4db;
+  --color-success-400: #20dad2;
+  --color-success-450: #17c6c1;
+  --color-success-500: #12b1ad;
+  --color-success-550: #0e9999;
+  --color-success-600: #0d8185;
+  --color-success-650: #0c6a71;
+  --color-success-700: #0b535e;
+  --color-success-750: #0a404c;
+  --color-success-800: #082e3a;
+  --color-success-850: #06232e;
+  --color-success-900: #041923;
+  --color-success-950: #021119;
+
+  /* Violet is the secondary accent used by the podcast identity. */
+  --color-blue-50: #f0f1ff;
+  --color-blue-100: #e4e6ff;
+  --color-blue-150: #d2d6ff;
+  --color-blue-200: #c0c6ff;
+  --color-blue-250: #afb7ff;
+  --color-blue-300: #9eabff;
+  --color-blue-350: #8e9eff;
+  --color-blue-400: #8493ff;
+  --color-blue-450: #7785f4;
+  --color-blue-500: #6b77e3;
+  --color-blue-550: #5e69d0;
+  --color-blue-600: #525cbb;
+  --color-blue-650: #464fa4;
+  --color-blue-700: #3b438a;
+  --color-blue-750: #30376f;
+  --color-blue-800: #262c57;
+  --color-blue-850: #1d2243;
+  --color-blue-900: #151a32;
+  --color-blue-950: #0e1224;
+
+  --theme-bg: var(--qjai-bg);
+  --theme-text: var(--qjai-text);
+  --theme-input-bg: var(--qjai-bg-alt);
+  --theme-border-color: var(--qjai-line);
+
+  --style-radius-s: 7px;
+  --style-radius-m: 10px;
+  --style-radius-l: 14px;
+  --font-body: Inter, 'PingFang SC', 'Noto Sans CJK SC', 'Microsoft YaHei', sans-serif;
+}
+
+html[data-theme='dark'] body {
+  min-height: 100%;
+  background:
+    radial-gradient(ellipse 50% 54% at 73% 0%, rgba(67, 81, 176, 0.12), transparent 80%),
+    radial-gradient(ellipse 55% 50% at 8% 12%, rgba(0, 181, 171, 0.06), transparent 75%),
+    var(--qjai-bg);
+  color: var(--qjai-text);
+  font-family: Inter, 'PingFang SC', 'Noto Sans CJK SC', 'Microsoft YaHei', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+html[data-theme='dark'] .app,
+html[data-theme='dark'] .template-default__wrap,
+html[data-theme='dark'] .dashboard,
+html[data-theme='dark'] .collection-list {
+  background: transparent;
+}
+
+/* Sidebar */
+html[data-theme='dark'] .nav {
+  background: linear-gradient(180deg, rgba(12, 24, 48, 0.98), rgba(8, 18, 37, 0.98));
+  border-right: 1px solid var(--qjai-line);
+}
+
+html[data-theme='dark'] .nav__brand {
+  border-bottom: 1px solid var(--qjai-line);
+}
+
+.qjai-admin-icon {
+  display: block;
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+}
+
+html[data-theme='dark'] .nav__link {
+  margin: 2px 9px;
+  border-radius: 10px;
+  transition: background-color 180ms ease, color 180ms ease;
+}
+
+html[data-theme='dark'] .nav__link:hover:not(.nav__link--selected) {
+  background: rgba(32, 218, 210, 0.07);
+}
+
+html[data-theme='dark'] .nav__link--selected {
+  background: rgba(32, 218, 210, 0.11);
+}
+
+html[data-theme='dark'] .nav__link--selected,
+html[data-theme='dark'] .nav__link--selected .nav__link-label {
+  color: var(--qjai-cyan);
+}
+
+/* Header and content surfaces */
+html[data-theme='dark'] .app-header {
+  background: rgba(8, 18, 37, 0.82);
+  border-bottom: 1px solid var(--qjai-line);
+  backdrop-filter: blur(14px);
+}
+
+html[data-theme='dark'] .collection-list__header,
+html[data-theme='dark'] .collection-list__sub-header,
+html[data-theme='dark'] .doc-controls,
+html[data-theme='dark'] .doc-header {
+  border-color: var(--qjai-line);
+}
+
+html[data-theme='dark'] .collection-list .table table {
+  border: 1px solid var(--qjai-line);
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+html[data-theme='dark'] .collection-list .table thead th {
+  background: var(--qjai-bg-alt);
+  color: var(--qjai-muted);
+  border-bottom: 1px solid var(--qjai-line);
+}
+
+html[data-theme='dark'] .collection-list .table tbody td {
+  border-bottom: 1px solid rgba(176, 205, 238, 0.08);
+}
+
+html[data-theme='dark'] .collection-list .table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+html[data-theme='dark'] .collection-list .table tbody tr:hover td {
+  background: rgba(32, 218, 210, 0.045);
+}
+
+/* Forms */
+html[data-theme='dark'] input[type='text'],
+html[data-theme='dark'] input[type='search'],
+html[data-theme='dark'] input[type='email'],
+html[data-theme='dark'] input[type='password'],
+html[data-theme='dark'] input[type='number'],
+html[data-theme='dark'] textarea,
+html[data-theme='dark'] select {
+  background-color: var(--qjai-bg-alt);
+  border-color: var(--qjai-line);
+  border-radius: 8px;
+  color: var(--qjai-text);
+}
+
+html[data-theme='dark'] input::placeholder,
+html[data-theme='dark'] textarea::placeholder {
+  color: #7187a3;
+}
+
+html[data-theme='dark'] input:focus,
+html[data-theme='dark'] textarea:focus,
+html[data-theme='dark'] select:focus {
+  border-color: rgba(32, 218, 210, 0.7);
+  box-shadow: 0 0 0 3px rgba(32, 218, 210, 0.1);
+  outline: none;
+}
+
+/* Actions */
+html[data-theme='dark'] .btn {
+  border-radius: 9px;
+  transition: transform 180ms ease, background-color 180ms ease, border-color 180ms ease;
+}
+
+html[data-theme='dark'] .btn--style-primary {
+  background: var(--qjai-cyan);
+  border-color: var(--qjai-cyan);
+  color: #04182a;
+  font-weight: 750;
+}
+
+html[data-theme='dark'] .btn--style-primary:hover {
+  background: #65f5e8;
+  border-color: #65f5e8;
+  color: #04182a;
+  transform: translateY(-1px);
+}
+
+html[data-theme='dark'] .pill {
+  border-radius: 999px;
+}
+
+html[data-theme='dark'] a:focus-visible,
+html[data-theme='dark'] button:focus-visible,
+html[data-theme='dark'] input:focus-visible,
+html[data-theme='dark'] textarea:focus-visible,
+html[data-theme='dark'] select:focus-visible {
+  outline: 2px solid var(--qjai-cyan);
+  outline-offset: 3px;
+}
+
+html[data-theme='dark'] ::selection {
+  color: #04182a;
+  background: rgba(32, 218, 210, 0.7);
+}
+
+/* Login branding */
+.qjai-admin-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  max-width: 100%;
+}
+
+.qjai-admin-logo > img {
+  display: block;
+  width: 52px;
+  height: 52px;
+  flex: 0 0 auto;
+  object-fit: contain;
+}
+
+.qjai-admin-logo__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.qjai-admin-logo__name {
+  color: var(--qjai-text);
+  font-size: 25px;
+  font-weight: 750;
+  letter-spacing: -0.055em;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.qjai-admin-logo__name strong {
+  color: var(--qjai-cyan);
+}
+
+.qjai-admin-logo__tagline {
+  color: var(--qjai-muted);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.24em;
+}
+
+@media (max-width: 768px) {
+  .qjai-admin-logo > img {
+    width: 44px;
+    height: 44px;
+  }
+
+  .qjai-admin-logo__name {
+    font-size: 22px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
