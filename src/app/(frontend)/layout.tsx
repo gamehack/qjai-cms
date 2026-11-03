@@ -32,7 +32,8 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
               <span className="brand-text">{siteName}</span>
             </Link>
             <nav aria-label="主导航">
-              <Link href="/">首页</Link>
+              <Link href="https://qjai.org/" target="_blank" rel="noopener noreferrer">主站</Link>
+              <Link href="https://tools.qjai.org/" target="_blank" rel="noopener noreferrer">工具</Link>
               <Link href="https://podcast.qjai.org/" target="_blank" rel="noopener noreferrer">播客</Link>
             </nav>
           </div>
