@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { getPublishedArticles } from '@/lib/content'
+import { getPublicCategories, getPublishedArticles } from '@/lib/content'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,7 +21,10 @@ function sourceLabel(value: string | null | undefined) {
 }
 
 export default async function Home() {
-  const articles = await getPublishedArticles()
+  const [articles, categories] = await Promise.all([
+    getPublishedArticles(),
+    getPublicCategories(),
+  ])
   return (
     <div className="container">
       <section className="hero">
@@ -35,16 +38,22 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="topics" aria-label="主题栏目">
-        <h2 className="visually-hidden">主题栏目</h2>
-        <div className="topic-chips">
-          <span className="topic-chip">AI 工具</span>
-          <span className="topic-chip">平台流量</span>
-          <span className="topic-chip">商业模式</span>
-          <span className="topic-chip">市场规则</span>
-          <span className="topic-chip">早期机会</span>
-        </div>
-      </section>
+      {categories.length > 0 && (
+        <section className="topics" aria-label="内容分类">
+          <h2 className="visually-hidden">内容分类</h2>
+          <div className="topic-chips">
+            {categories.map(category => (
+              <Link
+                className="topic-chip"
+                href={`/category/${encodeURIComponent(category.slug)}`}
+                key={category.id}
+              >
+                {category.name}
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="latest" id="latest">
         <h2 className="section-title">最新文章</h2>
