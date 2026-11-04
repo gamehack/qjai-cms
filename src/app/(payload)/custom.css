@@ -313,3 +313,22 @@ html[data-theme='dark'] ::selection {
     transition-duration: 0.01ms !important;
   }
 }
+
+.qjai-publish-all {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 0 0 18px;
+}
+
+.qjai-publish-all__message {
+  color: var(--qjai-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.qjai-publish-all button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}

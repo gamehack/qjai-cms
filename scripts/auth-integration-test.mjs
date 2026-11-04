@@ -274,4 +274,88 @@ const nullArticle = await request(`/articles/${nullCategory.data.id}`, { token: 
 status(nullArticle, 200, 'read unclassified article')
 assert.equal(nullArticle.data.category ?? null, null)
 
-console.log('PASS: auth bootstrap, role permissions, publication visibility and ingestion contract')
+
+console.log('8/8 Verify bulk publish is administrator-only and publishes drafts only')
+const anonymousBulkPreview = await request('/articles/publish-all')
+assert.ok([401, 403].includes(anonymousBulkPreview.status), 'anonymous user accessed bulk-publish preview')
+const anonymousBulkPublish = await request('/articles/publish-all', { method: 'POST' })
+assert.ok([401, 403].includes(anonymousBulkPublish.status), 'anonymous user accessed bulk publish')
+const editorBulkPreview = await request('/articles/publish-all', { token: editorToken })
+status(editorBulkPreview, 403, 'editor bulk-publish preview')
+const editorBulkPublish = await request('/articles/publish-all', { method: 'POST', token: editorToken })
+status(editorBulkPublish, 403, 'editor bulk publish')
+
+const bulkDrafts = []
+for (let index = 0; index < 2; index += 1) {
+  const created = await request('/articles', {
+    method: 'POST',
+    token: adminToken,
+    body: {
+      title: `Bulk publish draft ${index} ${suffix}`,
+      slug: `ci-bulk-draft-${index}-${suffix}`,
+      summary: 'Bulk publication integration test',
+      bodyMarkdown: 'This draft should be published by the administrator action.',
+      status: 'draft',
+      source: 'ci',
+    },
+  })
+  status(created, 201, 'administrator creates bulk-publish draft')
+  bulkDrafts.push(created.data.doc)
+}
+
+const bulkReview = await request('/articles', {
+  method: 'POST',
+  token: adminToken,
+  body: {
+    title: `Bulk publish review ${suffix}`,
+    slug: `ci-bulk-review-${suffix}`,
+    summary: 'This review item must not be published by bulk action',
+    bodyMarkdown: 'Review status must remain unchanged.',
+    status: 'review',
+    source: 'ci',
+  },
+})
+status(bulkReview, 201, 'administrator creates review item')
+assert.equal(bulkReview.data.doc.status, 'review')
+
+const bulkPreview = await request('/articles/publish-all', { token: adminToken })
+status(bulkPreview, 200, 'administrator bulk-publish preview')
+assert.ok(bulkPreview.data.draftCount >= bulkDrafts.length, 'preview omitted known draft articles')
+
+const bulkResult = await request('/articles/publish-all', { method: 'POST', token: adminToken })
+status(bulkResult, 200, 'administrator bulk publish')
+assert.equal(bulkResult.data.draftCountBefore, bulkPreview.data.draftCount)
+assert.equal(bulkResult.data.publishedCount, bulkPreview.data.draftCount)
+assert.equal(bulkResult.data.failedCount, 0)
+assert.equal(bulkResult.data.remainingDraftCount, 0)
+
+for (const draft of bulkDrafts) {
+  const published = await request(`/articles/${draft.id}`, { token: adminToken })
+  status(published, 200, 'read bulk-published article')
+  assert.equal(published.data.status, 'published')
+  assert.ok(published.data.publishedAt, 'bulk-published article is missing publishedAt')
+}
+const stillReview = await request(`/articles/${bulkReview.data.doc.id}`, { token: adminToken })
+status(stillReview, 200, 'read review item after bulk publish')
+assert.equal(stillReview.data.status, 'review')
+assert.equal(stillReview.data.publishedAt ?? null, null)
+
+const existingPublishedAfterBulk = await request(`/articles/${publishedId}`, { token: adminToken })
+status(existingPublishedAfterBulk, 200, 'read previously published article after bulk publish')
+assert.equal(existingPublishedAfterBulk.data.status, 'published')
+assert.equal(existingPublishedAfterBulk.data.publishedAt, adminPublish.data.doc.publishedAt)
+
+const repeatedBulkPublish = await request('/articles/publish-all', { method: 'POST', token: adminToken })
+status(repeatedBulkPublish, 200, 'repeat bulk publish')
+assert.equal(repeatedBulkPublish.data.publishedCount, 0)
+assert.equal(repeatedBulkPublish.data.remainingDraftCount, 0)
+
+const publicAfterBulk = await request('/articles?limit=100')
+status(publicAfterBulk, 200, 'public list after bulk publish')
+const publicAfterBulkSlugs = (publicAfterBulk.data.docs || []).map(doc => doc.slug)
+for (const draft of bulkDrafts) {
+  assert.ok(publicAfterBulkSlugs.includes(draft.slug), 'published draft is not visible to anonymous readers')
+}
+assert.ok(!publicAfterBulkSlugs.includes(bulkReview.data.doc.slug), 'bulk publish exposed review content')
+
+console.log('PASS: auth bootstrap, role permissions, publication visibility, ingestion and admin bulk publish')
