@@ -21,7 +21,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=traefik_default"
-      - "traefik.http.routers.qjai-cms.rule=Host(`qjai.org`)"
+      - "traefik.http.routers.qjai-cms.rule=Host(`cms.qjai.org`)"
       - "traefik.http.routers.qjai-cms.entrypoints=websecure"
       - "traefik.http.routers.qjai-cms.tls=true"
       - "traefik.http.routers.qjai-cms.tls.certresolver=letsencrypt"
