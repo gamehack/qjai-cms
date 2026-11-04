@@ -10,7 +10,7 @@ An open-source, self-hosted CMS core built with Next.js, Payload CMS and Postgre
 - Payload CMS administration and authentication.
 - PostgreSQL persistence with versioned database migrations.
 - An authenticated, idempotent content ingestion API. Imported content is always saved as a draft.
-- Editorial review before public publication.
+- Editorial review before public publication, with an administrator-only bulk action for publishing all current drafts.
 - Docker runtime and one-shot migration build targets.
 
 This repository contains the CMS core only. Upstream collection agents, proprietary prompts and scoring rules, private datasets, production credentials, internal automation and external publishing executors are out of scope.
@@ -90,6 +90,19 @@ The database category ID is resolved internally and must not be supplied by clie
 The existing `source + externalId` idempotency contract is unchanged: a replay
 returns the original article without overwriting an editor-assigned category,
 title, body, status, or other fields. Imported articles are always drafts.
+
+### Administrator bulk publication
+
+The Articles list includes an administrator-only **全部发布** action. It first
+shows the current number of drafts and requires explicit browser confirmation.
+The server rechecks the collection and publishes only documents whose status is
+still `draft`; `review` and already-published documents are never included.
+Publication uses the normal Payload update pipeline, including collection access
+control and the `publishedAt` hook, and respects document locks. The response
+reports published, failed, skipped, and remaining draft counts. Editors and
+unauthenticated users cannot call either the preview or publish endpoint.
+The action is manual and does not change the ingestion API: imported content
+continues to enter the CMS as a draft.
 
 ## Database backup and recovery
 
