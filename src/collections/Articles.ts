@@ -1,12 +1,118 @@
-import type { CollectionConfig } from 'payload'
+import type { CollectionConfig, PayloadRequest } from 'payload'
 import { isAdminUser, isEditorUser, preventEditorPublication } from '../lib/access'
+
+async function countDraftArticles(req: PayloadRequest): Promise<number> {
+  const result = await req.payload.count({
+    collection: 'articles',
+    where: { status: { equals: 'draft' } },
+    overrideAccess: false,
+    req,
+    user: req.user,
+  })
+  return result.totalDocs
+}
+
+function forbiddenResponse() {
+  return Response.json(
+    { error: 'forbidden' },
+    { status: 403, headers: { 'Cache-Control': 'no-store' } },
+  )
+}
 
 export const Articles: CollectionConfig = {
   slug: 'articles',
   admin: {
     useAsTitle: 'title',
     defaultColumns: ['title', 'status', 'source', 'publishedAt', 'updatedAt'],
+    components: {
+      beforeList: ['/components/payload/PublishAllDraftsButton#PublishAllDraftsButton'],
+    },
   },
+  endpoints: [
+    {
+      path: '/publish-all',
+      method: 'get',
+      handler: async (req) => {
+        if (!isAdminUser(req.user)) return forbiddenResponse()
+
+        try {
+          const draftCount = await countDraftArticles(req)
+          return Response.json(
+            { draftCount },
+            { headers: { 'Cache-Control': 'no-store' } },
+          )
+        } catch {
+          return Response.json(
+            { error: 'draft_count_failed' },
+            { status: 500, headers: { 'Cache-Control': 'no-store' } },
+          )
+        }
+      },
+    },
+    {
+      path: '/publish-all',
+      method: 'post',
+      handler: async (req) => {
+        if (!isAdminUser(req.user)) return forbiddenResponse()
+
+        try {
+          const draftCountBefore = await countDraftArticles(req)
+          if (draftCountBefore === 0) {
+            return Response.json(
+              {
+                draftCountBefore: 0,
+                publishedCount: 0,
+                failedCount: 0,
+                skippedCount: 0,
+                remainingDraftCount: 0,
+              },
+              { headers: { 'Cache-Control': 'no-store' } },
+            )
+          }
+
+          // The status filter is repeated in the write query. A document that
+          // an administrator moves to review after the preview cannot be
+          // accidentally published by this bulk operation.
+          const result = await req.payload.update({
+            collection: 'articles',
+            where: { status: { equals: 'draft' } },
+            data: { status: 'published' },
+            depth: 0,
+            overrideAccess: false,
+            overrideLock: false,
+            req,
+            user: req.user,
+          })
+
+          const publishedCount = result.docs.length
+          const failedCount = result.errors.length
+          const remainingDraftCount = await countDraftArticles(req)
+          const skippedCount = Math.max(
+            0,
+            draftCountBefore - publishedCount - failedCount,
+          )
+
+          return Response.json(
+            {
+              draftCountBefore,
+              publishedCount,
+              failedCount,
+              skippedCount,
+              remainingDraftCount,
+            },
+            { headers: { 'Cache-Control': 'no-store' } },
+          )
+        } catch {
+          // A failed response is intentionally not retried by the client.
+          // The administrator can refresh the list and inspect remaining drafts.
+          return Response.json(
+            { error: 'bulk_publish_failed' },
+            { status: 500, headers: { 'Cache-Control': 'no-store' } },
+          )
+        }
+      },
+    },
+  ],
   access: {
     // Anonymous visitors can only read published content.
     read: ({ req }) => req.user ? true : { status: { equals: 'published' } },
