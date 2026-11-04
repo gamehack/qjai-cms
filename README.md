@@ -127,7 +127,7 @@ Production PostgreSQL connections must use `sslmode=verify-full` with the Supaba
 
 Keep runtime and migration passwords only in their respective production environment files. Never commit passwords, `.env`, or `.migration.env`; these files must remain covered by the repository's Git ignore rules. Do not copy the CA certificate into the repository or container image.
 
-The migration service reads only `.migration.env`; the app reads only `.env`. Do not mount migration credentials into the app container. The app binds to loopback port 3100 for a reverse proxy, and its health check verifies database readiness.
+The migration service reads only `.migration.env`; the app reads only `.env`. Do not mount migration credentials into the app container. The app binds to loopback port 3100 for a reverse proxy, and its health check verifies database readiness. The production reverse-proxy router must match `cms.qjai.org`; the apex `qjai.org` is served by the separate QJAI main site.
 
 The Dockerfile provides two build targets:
 
