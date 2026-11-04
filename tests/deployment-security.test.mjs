@@ -60,6 +60,6 @@ test('runtime and migration services mount the Supabase CA safely', () => {
 })
 
 test('the production CMS router uses cms.qjai.org, not the apex main-site hostname', () => {
-  assert.match(compose, /traefik\\.http\\.routers\\.qjai-cms\\.rule=Host\\(\`cms\\.qjai\\.org\`\\)/)
-  assert.doesNotMatch(compose, /traefik\\.http\\.routers\\.qjai-cms\\.rule=Host\\(\`qjai\\.org\`\\)/)
+  assert.ok(compose.includes('traefik.http.routers.qjai-cms.rule=Host(`cms.qjai.org`)'))
+  assert.ok(!compose.includes('traefik.http.routers.qjai-cms.rule=Host(`qjai.org`)'))
 })
