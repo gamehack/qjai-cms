@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { buildArticleSlug, buildSourceKey, isAuthorized, isValidCategorySlug, isValidOriginalUrl, isValidSource, readLimitedBody } from '../src/lib/ingest-security.ts'
+import { buildArticleSlug, buildSourceKey, isAuthorized, isValidCategorySlug, isValidExternalId, isValidOriginalUrl, isValidSource, readLimitedBody } from '../src/lib/ingest-security.ts'
 
 function streamFrom(chunks) {
   return new ReadableStream({
@@ -73,6 +73,15 @@ test('validates source IDs without accepting paths or whitespace', () => {
   assert.equal(isValidSource('valid_source-2'), true)
   assert.equal(isValidSource('../admin'), false)
   assert.equal(isValidSource('source/child'), false)
+})
+
+test('accepts bounded machine external IDs without query or path characters', () => {
+  for (const value of ['2026-11-06', 'weekly:2026-11-02', 'monthly:2026-10', 'snapshot_1']) {
+    assert.equal(isValidExternalId(value), true, value)
+  }
+  for (const value of ['', ' 2026-11-06', '2026-11-06 ', '../admin', 'x/y', 'x?y', 'x#y', 'a'.repeat(201)]) {
+    assert.equal(isValidExternalId(value), false, value)
+  }
 })
 
 test('accepts only credential-free HTTPS source URLs', () => {

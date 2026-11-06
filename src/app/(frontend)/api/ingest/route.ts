@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 import config from '@payload-config'
-import { buildArticleSlug, buildSourceKey, isAuthorized, isValidCategorySlug, isValidOriginalUrl, isValidSource, readLimitedBody } from '@/lib/ingest-security'
+import { buildArticleSlug, buildSourceKey, isAuthorized, isValidCategorySlug, isValidExternalId, isValidOriginalUrl, isValidSource, readLimitedBody } from '@/lib/ingest-security'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -19,7 +19,7 @@ function json(data: Record<string, unknown>, status: number) {
   })
 }
 
-export async function POST(req: NextRequest) {
+function authorize(req: NextRequest): NextResponse | string {
   const secret = process.env.CONTENT_INGEST_TOKEN
   if (!secret || secret.length < 32) {
     return json({ error: 'ingest_disabled' }, 503)
@@ -27,6 +27,54 @@ export async function POST(req: NextRequest) {
   if (!isAuthorized(req.headers.get('authorization'), secret)) {
     return json({ error: 'unauthorized' }, 401)
   }
+  return secret
+}
+
+export async function GET(req: NextRequest) {
+  const authorization = authorize(req)
+  if (typeof authorization !== 'string') return authorization
+
+  const keys = [...req.nextUrl.searchParams.keys()]
+  if (keys.some((key) => key !== 'source' && key !== 'externalId') ||
+      req.nextUrl.searchParams.getAll('source').length !== 1 ||
+      req.nextUrl.searchParams.getAll('externalId').length !== 1) {
+    return json({ error: 'invalid_query' }, 400)
+  }
+  const source = req.nextUrl.searchParams.get('source')
+  const externalId = req.nextUrl.searchParams.get('externalId')
+  if (!isValidSource(source) || !isValidExternalId(externalId)) {
+    return json({ error: 'invalid_query' }, 422)
+  }
+  const sourceKey = buildSourceKey(source, externalId)
+  try {
+    const payload = await getPayload({ config })
+    const found = await payload.find({
+      collection: 'articles',
+      where: { sourceKey: { equals: sourceKey } },
+      limit: 1,
+      depth: 0,
+      overrideAccess: true,
+    })
+    if (!found.docs.length) {
+      return json({ found: false, sourceKey }, 404)
+    }
+    const article = found.docs[0]
+    return json({
+      found: true,
+      sourceKey,
+      id: article.id,
+      slug: article.slug,
+      status: article.status,
+    }, 200)
+  } catch (error) {
+    console.error('ingest lookup failed', error instanceof Error ? error.name : 'unknown')
+    return json({ error: 'storage_failure' }, 500)
+  }
+}
+
+export async function POST(req: NextRequest) {
+  const authorization = authorize(req)
+  if (typeof authorization !== 'string') return authorization
 
   const contentType = req.headers.get('content-type')?.split(';', 1)[0].trim().toLowerCase()
   if (contentType !== 'application/json') {

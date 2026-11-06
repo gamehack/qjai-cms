@@ -197,6 +197,23 @@ const duplicateData = await duplicateIngest.json()
 status({ status: duplicateIngest.status, data: duplicateData }, 200, 'duplicate ingest')
 assert.equal(duplicateData.duplicate, true)
 
+const lookupQuery = new URLSearchParams({ source: ingestBody.source, externalId: ingestBody.externalId })
+const unauthorizedLookup = await fetch(`${baseURL}/api/ingest?${lookupQuery}`)
+status({ status: unauthorizedLookup.status, data: {} }, 401, 'ingest lookup without bearer token')
+const lookup = await fetch(`${baseURL}/api/ingest?${lookupQuery}`, {
+  headers: { Authorization: `Bearer ${ingestToken}` },
+})
+const lookupData = await lookup.json()
+status({ status: lookup.status, data: lookupData }, 200, 'ingest sourceKey lookup')
+assert.equal(lookupData.found, true)
+assert.equal(lookupData.sourceKey, `${ingestBody.source}:${ingestBody.externalId}`)
+assert.equal(lookupData.status, 'draft')
+assert.equal(Object.hasOwn(lookupData, 'bodyMarkdown'), false, 'lookup leaked article content')
+const missingLookup = await fetch(`${baseURL}/api/ingest?${new URLSearchParams({ source: 'ci-test', externalId: `missing-${suffix}` })}`, {
+  headers: { Authorization: `Bearer ${ingestToken}` },
+})
+status({ status: missingLookup.status, data: await missingLookup.json() }, 404, 'missing sourceKey lookup')
+
 
 console.log('Verify optional categorySlug validation, association, and replay protection')
 const ingest = async body => {
